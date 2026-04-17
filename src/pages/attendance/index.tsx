@@ -694,9 +694,22 @@ export default function AttendancePage() {
 
   const stats = useMemo(() => {
     const present = filtered.filter((l) =>
-      ["PRESENT", "LATE", "WEEKEND_WORK", "HOLIDAY_WORK"].includes(l.attendanceStatus)
+      ["PRESENT", "LATE", "HALF_DAY", "WEEKEND_WORK", "HOLIDAY_WORK"].includes(l.attendanceStatus)
     ).length;
-    const late = filtered.filter((l) => l.attendanceStatus === "LATE").length;
+    const late = filtered.filter((l) => {
+      if (l.attendanceStatus === "LATE") return true;
+      if (l.attendanceStatus === "HALF_DAY" && l.punchInTime && l.shiftStartTime) {
+        try {
+          // Robust parsing: extract YYYY-MM-DD from punchInTime and combine with HH:mm from shiftStartTime
+          const datePart = l.workDate; // workDate is usually YYYY-MM-DD
+          const [sH, sM] = l.shiftStartTime.split(':');
+          const shiftThreshold = new Date(`${datePart}T${sH}:${sM}:00`).getTime() + (10 * 60 * 1000);
+          const punchTime = new Date(l.punchInTime).getTime();
+          return punchTime > shiftThreshold;
+        } catch(e) { return false; }
+      }
+      return false;
+    }).length;
     const totalMin = filtered.reduce((acc, l) => acc + (l.calculatedPayableMinutes ?? 0), 0);
     const overtimeMin = filtered.reduce((acc, l) => acc + (l.overtime ? l.overtimeMinutes : 0), 0);
 
@@ -922,7 +935,7 @@ export default function AttendancePage() {
         <StatCard label="Total Hours" value={formatMinutes(stats.totalMin)}
           sub="payable this period" iconBg="bg-indigo-50 dark:bg-indigo-950/40"
           icon={<svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
-        <StatCard label="Overtime" value={formatMinutes(stats.overtimeMin)}
+        <StatCard label="Overtime"  value={formatMinutes(stats.overtimeMin)}
           sub={stats.overtimeMin > 0 ? "extra hours logged" : "none this period"}
           iconBg="bg-violet-50 dark:bg-violet-950/40"
           icon={<svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>} />

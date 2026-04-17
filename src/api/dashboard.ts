@@ -17,6 +17,7 @@ export interface DashboardStats {
   lateDays: number;
   absentDays: number;
   leaveDays: number;
+  totalWorkedMinutes: number;
   currentSession: {
     id: number;
     punchInTime: string;

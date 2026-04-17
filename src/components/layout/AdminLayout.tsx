@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutGrid, Users, Clock3, ClipboardList, Wallet, Settings, 
   UserCircle2, ReceiptText, CalendarDays, MoonStar, 
-  SunMedium, LogOut, Menu, X, ChevronRight, Inbox 
+  SunMedium, LogOut, Menu, X, ChevronRight, Inbox,
+  User, ChevronLeft
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -37,6 +38,7 @@ export default function AdminLayout() {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "My Space": true,
@@ -47,13 +49,20 @@ export default function AdminLayout() {
 
   const groupedNav = useMemo(() => getGroupedNavItems(user?.role), [user?.role]);
 
-  const mobileBottomNav = useMemo(() => {
-    const preferred = ["/app/dashboard", "/app/attendance", "/app/requests", "/app/my-payslips", "/app/profile"];
-    const allItems = groupedNav.flatMap(([_, items]) => items);
-    return preferred.map((path) => allItems.find((item) => item.path === path)).filter(Boolean);
-  }, [groupedNav]);
+  // Fix: Scroll lock for mobile menu
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [mobileOpen]);
 
   const toggleGroup = (group: string) => {
+    if (isCollapsed) setIsCollapsed(false);
     setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
   };
 
@@ -62,132 +71,153 @@ export default function AdminLayout() {
     navigate("/login", { replace: true });
   }
 
-  const title = location.pathname.split("/").pop() || "dashboard";
+  const title = location.pathname.split("/").pop() || "Dashboard";
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
-      <div className="flex min-h-screen pb-20 md:pb-0">
-        {/* DESKTOP SIDEBAR */}
-        <aside className="hidden w-72 shrink-0 border-r border-gray-200 bg-white md:flex md:flex-col dark:border-gray-800 dark:bg-gray-900">
-          <div className="border-b border-gray-100 px-6 py-5 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
-                <LayoutGrid className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-base font-bold">CoreSync HRMS</p>
-                <p className="text-xs uppercase tracking-[0.25em] text-indigo-500">Workplace Suite</p>
-              </div>
+      
+      {/* 🛠️ TOP NAVIGATION HEADER */}
+      <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-gray-200 bg-white/95 px-4 backdrop-blur transition-all dark:border-gray-800 dark:bg-gray-900/95">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 md:hidden dark:hover:bg-gray-800"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          
+          <div className="flex items-center gap-2">
+            <div className="hidden h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 md:flex">
+              <LayoutGrid className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black tracking-tighter md:text-sm">CoreSync</p>
+              <p className="hidden text-[9px] uppercase tracking-[0.2em] text-indigo-500 font-bold md:block">HRMS Hub</p>
             </div>
           </div>
+        </div>
 
-          <nav className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="space-y-4">
+        <div className="flex items-center gap-1.5 md:gap-4">
+          {payrollLockDate && payrollLockDate !== "1970-01-01" && (
+            <div className="hidden lg:block">
+              <StatusBadge label={`Payroll locked ${payrollLockDate}`} tone="warning" />
+            </div>
+          )}
+          
+          <button
+            onClick={toggleTheme}
+            className="rounded-xl p-2 text-gray-400 transition-all hover:bg-gray-100 hover:text-indigo-600 dark:hover:bg-gray-800"
+          >
+            {isDark ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
+          </button>
+
+          <NavLink 
+            to="/app/profile"
+            className="group flex items-center gap-2 rounded-2xl p-1 pr-2 transition-all hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-sm transition-transform group-hover:scale-95">
+              <User className="h-4 w-4" />
+            </div>
+            <div className="hidden flex-col text-left md:flex">
+              <p className="text-[11px] font-black leading-none text-gray-900 dark:text-white">{user?.fullName?.split(' ')[0]}</p>
+              <p className="mt-0.5 text-[9px] font-bold text-gray-400">{user?.employeeCode}</p>
+            </div>
+          </NavLink>
+
+          <button 
+            onClick={handleLogout}
+            className="rounded-xl p-2 text-gray-400 transition-all hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex pt-16">
+        
+        {/* 🛠️ COLLAPSIBLE SIDEBAR */}
+        <aside className={`
+          fixed left-0 top-16 bottom-0 z-40 hidden border-r border-gray-200 bg-white transition-all duration-300 md:flex md:flex-col dark:border-gray-800 dark:bg-gray-900
+          ${isCollapsed ? 'w-20' : 'w-72'}
+        `}>
+          <nav className="flex-1 overflow-y-auto px-4 py-6 scrollbar-none">
+            <div className="space-y-6">
               {groupedNav.map(([group, items]) => {
                 const Icon = GROUP_ICONS[group];
                 const isOpen = openGroups[group];
                 
                 return (
-                  <div key={group} className="space-y-1">
-                    <button 
-                      onClick={() => toggleGroup(group)}
-                      className="group flex w-full items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400 transition-colors hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        {group}
-                      </div>
-                      <ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
-                    </button>
-                    
-                    {isOpen && (
-                      <div className="mt-1 space-y-1">
-                        {items.map((item) => {
-                          const ItemIcon = ITEM_ICONS[item.path] || LayoutGrid;
-                          return (
-                            <NavLink
-                              key={item.path}
-                              to={item.path}
-                              className={({ isActive }) => `
-                                flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all
-                                ${isActive 
-                                  ? "bg-indigo-50 text-indigo-700 shadow-sm dark:bg-indigo-950/40 dark:text-indigo-300" 
-                                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"}
-                              `}
-                            >
-                              <ItemIcon className="h-4 w-4" />
-                              <span>{item.label}</span>
-                            </NavLink>
-                          );
-                        })}
-                      </div>
+                  <div key={group} className="space-y-2">
+                    {!isCollapsed ? (
+                      <button 
+                        onClick={() => toggleGroup(group)}
+                        className="flex w-full items-center justify-between px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500"
+                      >
+                        <span>{group}</span>
+                        <ChevronRight className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                      </button>
+                    ) : (
+                      <div className="flex h-px w-full bg-gray-100 dark:bg-gray-800" />
                     )}
+                    
+                    <div className="space-y-1">
+                      {items.map((item) => {
+                        const ItemIcon = ITEM_ICONS[item.path] || LayoutGrid;
+                        return (
+                          <NavLink
+                            key={item.path}
+                            to={item.path}
+                            className={({ isActive }) => `
+                              flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition-all
+                              ${isActive 
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
+                                : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-gray-800"}
+                              ${isCollapsed ? 'justify-center px-0' : ''}
+                            `}
+                          >
+                            <ItemIcon className="h-5 w-5 shrink-0" />
+                            {!isCollapsed && <span>{item.label}</span>}
+                          </NavLink>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </nav>
 
+          {/* COLLAPSE TOGGLE */}
           <div className="border-t border-gray-100 p-4 dark:border-gray-800">
-            <div className="rounded-2xl bg-gray-50 p-3 dark:bg-gray-800/70">
-              <p className="text-sm font-semibold">{user?.fullName || "User"}</p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{user?.employeeCode}</p>
-              <div className="mt-3 flex items-center justify-between">
-                <StatusBadge label={user?.role.replaceAll("_", " ") || "Employee"} tone="info" />
-                <button onClick={handleLogout} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-white hover:text-red-500 dark:hover:bg-gray-900">
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="flex w-full items-center justify-center rounded-2xl bg-gray-50 py-3 text-gray-400 transition-all hover:bg-indigo-50 hover:text-indigo-600 dark:bg-gray-800/50 dark:hover:bg-indigo-950/20"
+            >
+              {isCollapsed ? <ChevronRight className="h-5 w-5" /> : (
+                <div className="flex items-center gap-2">
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-widest">Collapse View</span>
+                </div>
+              )}
+            </button>
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur md:px-6 dark:border-gray-800 dark:bg-gray-900/95">
-            <div className="flex h-16 items-center justify-between px-4 md:px-0">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen((open) => !open)}
-                  className="rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 md:hidden dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                >
-                  {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </button>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Workplace</p>
-                  <p className="text-base font-bold capitalize">{title.replaceAll("-", " ")}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {payrollLockDate && payrollLockDate !== "1970-01-01" && (
-                  <StatusBadge label={`Payroll lock ${payrollLockDate}`} tone="warning" />
-                )}
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                >
-                  {isDark ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
+        {/* 🛠️ NAVIGATION OVERLAY (MOBILE) */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-[60] bg-gray-950/20 backdrop-blur-sm md:hidden">
+            <div className="h-full w-4/5 overflow-y-auto bg-white p-6 shadow-2xl scrollbar-none dark:bg-gray-900">
+              <div className="mb-8 flex items-center justify-between">
+                <p className="text-xl font-black">Menu</p>
+                <button onClick={() => setMobileOpen(false)} className="rounded-xl bg-gray-100 p-2 dark:bg-gray-800">
+                  <X className="h-6 w-6" />
                 </button>
               </div>
-            </div>
-          </header>
-
-          {/* MOBILE NAVIGATION OVERLAY */}
-          {mobileOpen && (
-            <div className="fixed inset-0 z-50 bg-white p-4 md:hidden dark:bg-gray-950">
-               <div className="mb-8 flex items-center justify-between">
-                 <p className="text-lg font-bold">Navigation</p>
-                 <button onClick={() => setMobileOpen(false)} className="rounded-xl bg-gray-100 p-2 dark:bg-gray-900">
-                   <X className="h-6 w-6" />
-                 </button>
-               </div>
-               <div className="space-y-6">
+              <div className="space-y-8">
                 {groupedNav.map(([group, items]) => (
                   <div key={group}>
-                    <p className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400">{group}</p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <p className="mb-4 text-xs font-black uppercase tracking-widest text-gray-400">{group}</p>
+                    <div className="grid grid-cols-1 gap-2">
                       {items.map((item) => {
                         const ItemIcon = ITEM_ICONS[item.path] || LayoutGrid;
                         return (
@@ -196,13 +226,13 @@ export default function AdminLayout() {
                             to={item.path}
                             onClick={() => setMobileOpen(false)}
                             className={({ isActive }) => `
-                              flex items-center gap-3 rounded-2xl border p-3 text-sm font-semibold transition-all
+                              flex items-center gap-4 rounded-2xl p-4 text-sm font-bold transition-all
                               ${isActive 
-                                ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" 
-                                : "border-gray-100 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"}
+                                ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" 
+                                : "bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}
                             `}
                           >
-                            <ItemIcon className="h-4 w-4" />
+                            <ItemIcon className="h-5 w-5" />
                             {item.label}
                           </NavLink>
                         );
@@ -212,38 +242,19 @@ export default function AdminLayout() {
                 ))}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          <main className="flex-1 px-4 py-6 md:px-6">
+        {/* 🛠️ MAIN CONTENT AREA */}
+        <main className={`
+          flex-1 transition-all duration-300 p-4 md:p-8
+          ${isCollapsed ? 'md:ml-20' : 'md:ml-72'}
+        `}>
+          <div className="mx-auto max-w-7xl">
             <Outlet />
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
-
-      {/* MOBILE BOTTOM NAV */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-2 py-2 backdrop-blur md:hidden dark:border-gray-800 dark:bg-gray-900/95">
-        <div className="grid grid-cols-5 gap-1">
-          {mobileBottomNav.map((item) => {
-            if (!item) return null;
-            const ItemIcon = ITEM_ICONS[item.path] || LayoutGrid;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => `
-                  flex flex-col items-center rounded-2xl px-2 py-2 text-[10px] font-bold tracking-tight transition-all
-                  ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400 dark:text-gray-500"}
-                `}
-              >
-                <div className={`mb-1 flex h-8 w-12 items-center justify-center rounded-2xl transition-all ${location.pathname === item.path ? 'bg-indigo-50 dark:bg-indigo-950/40' : ''}`}>
-                  <ItemIcon className="h-5 w-5" />
-                </div>
-                {item.mobileLabel || item.label}
-              </NavLink>
-            );
-          })}
-        </div>
-      </nav>
     </div>
   );
 }
