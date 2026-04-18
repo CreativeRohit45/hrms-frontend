@@ -1,74 +1,53 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BriefcaseBusiness, Mail, Phone, UserCircle2 } from "lucide-react";
-import { getMyProfile, updateMyProfile } from "../api/employees";
-import { getMyBalances } from "../api/leaves";
-import type { EmployeeResponse } from "../types/employee";
-import type { LeaveBalanceResponse } from "../types/leave";
+import { useMyProfile, useUpdateMyProfile } from "../hooks/queries/useEmployees";
+import { useMyBalances } from "../hooks/queries/useLeaves";
 import { ErrorState } from "../components/ui/ErrorState";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppToast } from "../components/ui/ToastProvider";
 
 export default function Profile() {
   const { pushToast } = useAppToast();
-  const [profile, setProfile] = useState<EmployeeResponse | null>(null);
-  const [balances, setBalances] = useState<LeaveBalanceResponse[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  const { data: profile, isLoading: isProfileLoading, isError: isProfileError } = useMyProfile();
+  const { data: balances = [] } = useMyBalances();
+  const updateMutation = useUpdateMyProfile();
 
+  const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
     phone: "",
     email: "",
     photoUrl: "",
   });
 
+  // Sync form state when profile data successfully loads
   useEffect(() => {
-    void fetchProfile();
-    void fetchBalances();
-  }, []);
-
-  async function fetchProfile() {
-    try {
-      const data = await getMyProfile();
-      setProfile(data);
+    if (profile) {
       setForm({
-        phone: data.phone || "",
-        email: data.email || "",
-        photoUrl: data.photoUrl || "",
+        phone: profile.phone || "",
+        email: profile.email || "",
+        photoUrl: profile.photoUrl || "",
       });
-    } catch {
-      setError("We could not load your profile details.");
     }
-  }
-
-  async function fetchBalances() {
-    try {
-      const data = await getMyBalances();
-      setBalances(data);
-    } catch {
-      // Non-critical sidebar data.
-    }
-  }
+  }, [profile]);
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
-    setIsSaving(true);
-    setError(null);
-
     try {
-      const updated = await updateMyProfile(form);
-      setProfile(updated);
+      await updateMutation.mutateAsync(form);
       setIsEditing(false);
       pushToast({ tone: "success", title: "Profile updated", message: "Your personal information has been saved." });
     } catch {
-      setError("We could not save your profile changes.");
-    } finally {
-      setIsSaving(false);
+      pushToast({ tone: "error", title: "Update failed", message: "We could not save your profile changes." });
     }
   }
 
-  if (!profile) {
+  if (isProfileLoading) {
     return <div className="p-8 text-sm text-slate-500">Loading profile data...</div>;
+  }
+
+  if (isProfileError || !profile) {
+    return <ErrorState message="We could not load your profile details." />;
   }
 
   const totalAllocated = balances.reduce((sum, balance) => sum + balance.allocated, 0);
@@ -89,7 +68,7 @@ export default function Profile() {
         ) : undefined}
       />
 
-      {error && <ErrorState message={error} />}
+
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="space-y-6">
@@ -214,8 +193,8 @@ export default function Profile() {
               >
                 Cancel
               </button>
-              <button type="submit" disabled={isSaving} className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 disabled:opacity-60">
-                {isSaving ? "Saving..." : "Save Changes"}
+              <button type="submit" disabled={updateMutation.isPending} className="rounded-2xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 disabled:opacity-60">
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
               </button>
             </div>
           )}

@@ -13,6 +13,8 @@ import {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  getMyProfile,
+  updateMyProfile,
 } from '../../api/employees';
 import type { EmployeeResponse, EmployeeCreateRequest, EmployeeUpdateRequest } from '../../types/employee';
 
@@ -30,6 +32,13 @@ export function useEmployeeById(id: number, enabled = true) {
     queryKey: queryKeys.employees.detail(id),
     queryFn: () => getEmployeeById(id),
     enabled: enabled && id > 0,
+  });
+}
+
+export function useMyProfile() {
+  return useQuery<EmployeeResponse>({
+    queryKey: ['myProfile'],
+    queryFn: getMyProfile,
   });
 }
 
@@ -63,3 +72,14 @@ export function useDeleteEmployee() {
     },
   });
 }
+
+export function useUpdateMyProfile() {
+  return useMutation({
+    mutationFn: (data: { phone?: string; email?: string; photoUrl?: string }) =>
+      updateMyProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+    },
+  });
+}
+

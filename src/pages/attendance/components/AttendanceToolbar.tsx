@@ -2,7 +2,6 @@
 //  AttendanceToolbar — Filters, view toggles, and export for
 //  calendar/list views. Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
-import React from "react";
 import { STATUS_CONFIG, exportToCSV } from "./shared";
 import type { AttendanceLogResponse, AttendanceStatus } from "../../../types/attendance";
 

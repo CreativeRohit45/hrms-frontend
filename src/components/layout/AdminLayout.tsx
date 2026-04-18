@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { 
-  LayoutGrid, Users, Clock3, ClipboardList, Wallet, Settings, 
-  UserCircle2, ReceiptText, CalendarDays, MoonStar, 
+import {
+  LayoutGrid, Users, Clock3, ClipboardList, Wallet, Settings,
+  UserCircle2, ReceiptText, CalendarDays, MoonStar,
   SunMedium, LogOut, Menu, X, ChevronRight, Inbox,
   User, ChevronLeft
 } from "lucide-react";
@@ -10,15 +10,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { getGroupedNavItems } from "../../lib/navigation";
-import type { NavGroup } from "../../lib/navigation";
 import { StatusBadge } from "../ui/StatusBadge";
-
-const GROUP_ICONS: Record<NavGroup, LucideIcon> = {
-  "My Space": UserCircle2,
-  "Team Space": Users,
-  "HR Operations": LayoutGrid,
-  "System Settings": Settings,
-};
 
 const ITEM_ICONS: Record<string, LucideIcon> = {
   "/app/dashboard": LayoutGrid,
@@ -37,7 +29,7 @@ export default function AdminLayout() {
   const { user, logout, payrollLockDate } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
+  useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -71,11 +63,11 @@ export default function AdminLayout() {
     navigate("/login", { replace: true });
   }
 
-  const title = location.pathname.split("/").pop() || "Dashboard";
+
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
-      
+
       {/* 🛠️ TOP NAVIGATION HEADER */}
       <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-gray-200 bg-white/95 px-4 backdrop-blur transition-all dark:border-gray-800 dark:bg-gray-900/95">
         <div className="flex items-center gap-3">
@@ -85,7 +77,7 @@ export default function AdminLayout() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          
+
           <div className="flex items-center gap-2">
             <div className="hidden h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 md:flex">
               <LayoutGrid className="h-5 w-5" />
@@ -103,7 +95,7 @@ export default function AdminLayout() {
               <StatusBadge label={`Payroll locked ${payrollLockDate}`} tone="warning" />
             </div>
           )}
-          
+
           <button
             onClick={toggleTheme}
             className="rounded-xl p-2 text-gray-400 transition-all hover:bg-gray-100 hover:text-indigo-600 dark:hover:bg-gray-800"
@@ -111,7 +103,7 @@ export default function AdminLayout() {
             {isDark ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
           </button>
 
-          <NavLink 
+          <NavLink
             to="/app/profile"
             className="group flex items-center gap-2 rounded-2xl p-1 pr-2 transition-all hover:bg-gray-50 dark:hover:bg-gray-800"
           >
@@ -124,7 +116,7 @@ export default function AdminLayout() {
             </div>
           </NavLink>
 
-          <button 
+          <button
             onClick={handleLogout}
             className="rounded-xl p-2 text-gray-400 transition-all hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
           >
@@ -134,7 +126,7 @@ export default function AdminLayout() {
       </header>
 
       <div className="flex pt-16">
-        
+
         {/* 🛠️ COLLAPSIBLE SIDEBAR */}
         <aside className={`
           fixed left-0 top-16 bottom-0 z-40 hidden border-r border-gray-200 bg-white transition-all duration-300 md:flex md:flex-col dark:border-gray-800 dark:bg-gray-900
@@ -143,13 +135,13 @@ export default function AdminLayout() {
           <nav className="flex-1 overflow-y-auto px-4 py-6 scrollbar-none">
             <div className="space-y-6">
               {groupedNav.map(([group, items]) => {
-                const Icon = GROUP_ICONS[group];
+
                 const isOpen = openGroups[group];
-                
+
                 return (
                   <div key={group} className="space-y-2">
                     {!isCollapsed ? (
-                      <button 
+                      <button
                         onClick={() => toggleGroup(group)}
                         className="flex w-full items-center justify-between px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500"
                       >
@@ -159,7 +151,7 @@ export default function AdminLayout() {
                     ) : (
                       <div className="flex h-px w-full bg-gray-100 dark:bg-gray-800" />
                     )}
-                    
+
                     <div className="space-y-1">
                       {items.map((item) => {
                         const ItemIcon = ITEM_ICONS[item.path] || LayoutGrid;
@@ -169,8 +161,8 @@ export default function AdminLayout() {
                             to={item.path}
                             className={({ isActive }) => `
                               flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition-all
-                              ${isActive 
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
+                              ${isActive
+                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
                                 : "text-gray-500 hover:bg-gray-100 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-gray-800"}
                               ${isCollapsed ? 'justify-center px-0' : ''}
                             `}
@@ -227,8 +219,8 @@ export default function AdminLayout() {
                             onClick={() => setMobileOpen(false)}
                             className={({ isActive }) => `
                               flex items-center gap-4 rounded-2xl p-4 text-sm font-bold transition-all
-                              ${isActive 
-                                ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" 
+                              ${isActive
+                                ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20"
                                 : "bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}
                             `}
                           >

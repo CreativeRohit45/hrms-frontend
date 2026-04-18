@@ -1,12 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════
 //  Shared constants, types, and sub-components for Attendance module
 // ═══════════════════════════════════════════════════════════════════
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getServerNow } from "../../../utils/serverTime";
 import {
-  formatMinutes,
-  formatTime,
-  formatWorkDate,
   type AttendanceLogResponse,
   type AttendanceStatus,
 } from "../../../types/attendance";

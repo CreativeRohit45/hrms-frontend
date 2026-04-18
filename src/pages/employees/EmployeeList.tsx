@@ -237,7 +237,6 @@ function EmptyState({ hasSearch, onAdd }: { hasSearch: boolean; onAdd: () => voi
 export default function EmployeeList({
   onAddEmployee,
   onEditEmployee,
-  refreshKey,
 }: {
   onAddEmployee: () => void;
   onEditEmployee?: (id: number) => void;

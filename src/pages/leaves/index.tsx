@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
-  getMyAuditTrail, previewLeave
+  previewLeave
 } from "../../api/leaves";
 import type {
-  LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
-  LeaveApplyRequest, LeaveBalanceAuditResponse, LeaveGrantRequest,
+  LeaveTypeDTO,
+  LeaveApplyRequest, LeaveGrantRequest,
   LeavePreviewResponse
 } from "../../types/leave";
 import {
@@ -61,7 +61,6 @@ export default function LeavesPage() {
   // ── TanStack Query: Mutations with cross-domain invalidation ───
   const cancelMutation = useCancelLeave();
   const approveMutation = useApproveLeave();
-  const rejectMutation = useRejectLeave();
   const revokeMutation = useRevokeLeave();
 
   // UI state (unchanged)
@@ -140,8 +139,8 @@ export default function LeavesPage() {
       {/* ── Toast ──────────────────────────────────────────────── */}
       {toast && (
         <div className={`fixed top-20 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2 animate-in slide-in-from-right duration-300 ${toast.type === "success"
-            ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-            : "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+          : "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
           }`}>
           {toast.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
           {toast.msg}
@@ -725,10 +724,10 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
           {/* Preview Panel */}
           {(form.startDate && form.endDate) && (
             <div className={`rounded-3xl border-2 p-5 transition-all duration-300 relative overflow-hidden ${previewLoading
-                ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30"
-                : hasErrors
-                  ? "border-amber-200/50 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/20"
-                  : "border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-inner"
+              ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30"
+              : hasErrors
+                ? "border-amber-200/50 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/20"
+                : "border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-inner"
               }`}>
               {previewLoading ? (
                 <div className="flex items-center justify-center gap-3 py-4 text-gray-400 text-[10px] font-black uppercase tracking-widest">
@@ -817,7 +816,7 @@ function RejectModal({ leaveId, onClose, onSuccess, onError }: {
 }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  
+
   const rejectMutation = useRejectLeave();
 
   async function handleSubmit(e: React.FormEvent) {

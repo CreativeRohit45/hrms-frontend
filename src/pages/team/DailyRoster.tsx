@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  Users, CalendarDays, Search,
-  Clock, MapPin, AlertCircle,
-  UserCheck2, UserMinus2, UserX2,
+  Users, Search,
+  Clock, AlertCircle,
   ChevronLeft, ChevronRight, RefreshCw,
   Wifi
 } from "lucide-react";
 import { useAppToast } from "../../components/ui/ToastProvider";
 import api from "../../api/axios";
-import { StatusBadge } from "../../components/ui/StatusBadge";
 
 interface AttendanceRosterItem {
   id: number;
@@ -41,9 +39,9 @@ function toDateString(d: Date) {
 // ── Status Badge (Premium Soft) ───────────────────────────────────
 function AttendanceBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    PRESENT:  { label: "Present",  cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/60" },
-    LATE:     { label: "Late",     cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60" },
-    ABSENT:   { label: "Absent",   cls: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800/60" },
+    PRESENT: { label: "Present", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/60" },
+    LATE: { label: "Late", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60" },
+    ABSENT: { label: "Absent", cls: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800/60" },
     ON_LEAVE: { label: "On Leave", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-800/60" },
   };
   const cfg = map[status] ?? { label: status.replaceAll("_", " "), cls: "bg-gray-100 text-gray-600 ring-1 ring-gray-200/60 dark:bg-gray-800 dark:text-gray-300" };
@@ -51,31 +49,6 @@ function AttendanceBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center rounded-xl px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${cfg.cls}`}>
       {cfg.label}
     </span>
-  );
-}
-
-// ── Stat Card ─────────────────────────────────────────────────────
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  valueColor,
-  iconColor,
-}: {
-  label: string;
-  value: number;
-  icon: React.ElementType;
-  valueColor: string;
-  iconColor: string;
-}) {
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">{label}</p>
-        <Icon className={`h-4 w-4 transition-colors ${iconColor}`} />
-      </div>
-      <p className={`mt-2 text-3xl font-black tabular-nums tracking-tight ${valueColor}`}>{value}</p>
-    </div>
   );
 }
 
@@ -101,17 +74,17 @@ function RosterCard({ item }: { item: AttendanceRosterItem }) {
   const initials = getInitials(item.fullName);
 
   const avatarColor: Record<string, string> = {
-    PRESENT:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-    LATE:     "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-    ABSENT:   "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
+    PRESENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    LATE: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    ABSENT: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
     ON_LEAVE: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
   };
   const avatarCls = avatarColor[item.attendanceStatus] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 
   const stripColor: Record<string, string> = {
-    PRESENT:  "bg-emerald-500",
-    LATE:     "bg-amber-400",
-    ABSENT:   "bg-rose-500",
+    PRESENT: "bg-emerald-500",
+    LATE: "bg-amber-400",
+    ABSENT: "bg-rose-500",
     ON_LEAVE: "bg-blue-500",
   };
   const strip = stripColor[item.attendanceStatus] ?? "bg-gray-300";
@@ -414,9 +387,9 @@ export default function DailyRoster() {
               {filteredRoster.map((item) => {
                 const initials = getInitials(item.fullName);
                 const avatarColor: Record<string, string> = {
-                  PRESENT:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-                  LATE:     "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-                  ABSENT:   "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
+                  PRESENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+                  LATE: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+                  ABSENT: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
                   ON_LEAVE: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
                 };
                 const avatarCls = avatarColor[item.attendanceStatus] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";

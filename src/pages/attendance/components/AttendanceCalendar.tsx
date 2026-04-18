@@ -2,7 +2,6 @@
 //  AttendanceCalendar — 7-day CSS grid calendar view (desktop only).
 //  Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
-import React from "react";
 import { getServerNow } from "../../../utils/serverTime";
 import { formatMinutes, type AttendanceLogResponse } from "../../../types/attendance";
 import { STATUS_CONFIG } from "./shared";

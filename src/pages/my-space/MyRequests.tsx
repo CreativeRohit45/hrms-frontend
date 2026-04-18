@@ -15,13 +15,10 @@ import {
   XCircle,
   AlertTriangle,
   Ban,
-  ArrowRight,
   SunDim,
   Sunset,
-  Info,
 } from "lucide-react";
 import { useAppToast } from "../../components/ui/ToastProvider";
-import api from "../../api/axios";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { AppModal } from "../../components/ui/AppModal";
 
@@ -75,11 +72,6 @@ function FormLabel({ children }: { children: React.ReactNode }) {
       {children}
     </label>
   );
-}
-
-/** Generic text/number input */
-function FormInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={fieldBase} />;
 }
 
 /** Textarea — taller, inherits border / bg styles */

@@ -2,7 +2,6 @@
 //  AttendanceList — Desktop table + Mobile weekly accordion cards.
 //  Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
-import React from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   formatMinutes,

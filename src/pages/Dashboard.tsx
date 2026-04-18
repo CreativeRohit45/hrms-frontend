@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { punchIn, punchOut } from "../api/attendance";
+import { getServerNow } from "../utils/serverTime";
 import {
   AlertCircle,
   Clock,
@@ -40,7 +41,7 @@ export default function Dashboard() {
     setPunchLoading(true);
     try {
       const position = await new Promise<GeolocationPosition>((res, rej) => 
-        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true })
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000 })
       );
       
       const { latitude: lat, longitude: lng } = position.coords;
@@ -296,7 +297,7 @@ function MetricCard({ label, value, icon, tone = "info" }: MetricCardProps) {
 function formatDuration(startTime: string) {
   if (!startTime) return "00:00:00";
   const start = new Date(startTime).getTime();
-  const now = new Date().getTime();
+  const now = getServerNow().getTime();
   const diff = Math.max(0, now - start);
   const h = Math.floor(diff / (1000 * 60 * 60));
   const m = Math.floor((diff / (1000 * 60)) % 60);

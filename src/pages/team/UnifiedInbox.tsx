@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import {
   CheckCircle2, XCircle, Clock3, CalendarDays,
-  MapPin, UserCircle2, Inbox, ArrowRight,
-  ClipboardList, Ticket, HelpCircle, PalmtreeIcon,
-  Sparkles, SlidersHorizontal, ChevronRight, Bell
+  MapPin, Inbox, ArrowRight, Ticket, PalmtreeIcon,
+  Sparkles, SlidersHorizontal, Bell
 } from "lucide-react";
 import { useAppToast } from "../../components/ui/ToastProvider";
 import api from "../../api/axios";
-import { StatusBadge } from "../../components/ui/StatusBadge";
 import { queryClient } from "../../lib/queryClient";
 import { queryKeys } from "../../lib/queryKeys";
 
@@ -67,28 +65,6 @@ const TYPE_CONFIG = {
     avatarBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300",
   },
 } as const;
-
-// ── Stat Pill ─────────────────────────────────────────────────────
-function StatPill({
-  count,
-  label,
-  colorClass,
-}: {
-  count: number;
-  label: string;
-  colorClass: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white px-3 py-2 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <span className={`text-lg font-black tabular-nums leading-none ${colorClass}`}>
-        {count}
-      </span>
-      <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-        {label}
-      </span>
-    </div>
-  );
-}
 
 // ── Request Card ──────────────────────────────────────────────────
 function RequestCard({

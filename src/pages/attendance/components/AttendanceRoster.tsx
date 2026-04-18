@@ -2,7 +2,7 @@
 //  AttendanceRoster — Daily roster table + mobile cards + date picker.
 //  Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getServerNow } from "../../../utils/serverTime";
 import {
   formatMinutes,
