@@ -174,7 +174,7 @@ export default function AdminPayroll() {
 
       {/* Main Table */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="max-md:hidden overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-800/50">
@@ -254,6 +254,65 @@ export default function AdminPayroll() {
               ))}
             </tbody>
           </table>
+        </div>
+        
+        {/* MOBILE CARDS */}
+        <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+          {loading ? (
+            <div className="p-12 text-center text-gray-400">
+              <div className="animate-pulse">Fetching payroll data...</div>
+            </div>
+          ) : records.length === 0 ? (
+            <div className="p-12 text-center text-gray-400">
+              <div className="opacity-50">No payroll data for this period.</div>
+              {!isLocked && (
+                <button onClick={() => setShowRunModal(true)} className="mt-4 text-indigo-600 font-bold">Run calculation now</button>
+              )}
+            </div>
+          ) : Array.isArray(records) && records.map((r: PayslipResponse) => (
+             <div key={r.recordId} className="p-5 space-y-4">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-xs text-gray-600 dark:text-gray-400">
+                     {r.fullName.charAt(0)}
+                   </div>
+                   <div>
+                     <p className="font-bold text-gray-900 dark:text-white text-sm leading-none">{r.fullName}</p>
+                     <p className="text-[10px] text-gray-400 font-mono mt-1">{r.employeeCode}</p>
+                   </div>
+                 </div>
+                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                      r.status === 'LOCKED' 
+                        ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400' 
+                        : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400'
+                 }`}>
+                   {r.status}
+                 </span>
+               </div>
+               
+               <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Base Salary</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">₹{r.grossPay.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Deductions</p>
+                    <p className="text-sm font-bold text-rose-500">₹{r.totalDeductions.toLocaleString()}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Net Days / LWP</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      {r.presentDays} <span className="font-normal text-gray-400 dark:text-gray-500 mx-1">/</span> <span className={r.absentDays > 0 ? "text-amber-500 font-bold" : "text-gray-400"}>{r.absentDays}</span>
+                    </p>
+                  </div>
+               </div>
+               
+               <div className="flex items-end justify-between pt-1">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Net Payout</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white leading-none">₹{r.netPay.toLocaleString()}</p>
+               </div>
+             </div>
+          ))}
         </div>
         
         {records.length > 0 && !isLocked && (

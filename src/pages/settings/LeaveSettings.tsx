@@ -140,7 +140,7 @@ export default function LeaveSettings() {
                 <Plus size={14} /> New Type
               </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="max-md:hidden overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[10px] uppercase tracking-widest">
@@ -198,6 +198,37 @@ export default function LeaveSettings() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* MOBILE CARDS */}
+            <div className="md:hidden divide-y divide-gray-50 dark:divide-gray-800">
+              {types.map((t) => (
+                <div key={t.id} className="p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-xs text-gray-500">
+                      {t.code}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-bold text-gray-900 dark:text-white text-sm">{t.name}</p>
+                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter border ${
+                          t.active ? "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30" : "text-gray-500 border-gray-200 bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800"
+                        }`}>
+                          {t.active ? "ACTIVE" : "DISABLED"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                        <span>{t.defaultAnnualQuota}d Total</span>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        <span>+{t.monthlyAccrualRate}/mo</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button className="text-gray-400 hover:text-indigo-600 p-2 transition-colors">
+                    <Settings size={18} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>

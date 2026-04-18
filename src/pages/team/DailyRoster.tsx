@@ -130,7 +130,7 @@ export default function DailyRoster() {
 
       {/* ROSTER TABLE */}
       <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900">
-        <div className="overflow-x-auto">
+        <div className="max-md:hidden overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-50 dark:border-gray-800/50">
@@ -203,6 +203,58 @@ export default function DailyRoster() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE CARDS */}
+        <div className="md:hidden divide-y divide-gray-50 dark:divide-gray-800/50">
+          {loading ? (
+             <div className="py-24 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
+                <p className="mt-4 text-xs font-bold uppercase tracking-widest text-gray-400">Syncing Roster...</p>
+             </div>
+          ) : filteredRoster.length === 0 ? (
+             <div className="py-24 text-center">
+                <AlertCircle className="mx-auto h-10 w-10 text-gray-300 mb-4" />
+                <p className="text-lg font-bold text-gray-700 dark:text-gray-300">No records today</p>
+                <p className="text-sm text-gray-400">Try adjusting your search or filters.</p>
+             </div>
+          ) : filteredRoster.map((item) => (
+             <div key={item.id} className="p-5 space-y-4">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-100 font-bold text-gray-500 dark:bg-gray-800">
+                     {item.fullName.charAt(0)}
+                   </div>
+                   <div>
+                     <p className="text-sm font-bold text-gray-900 dark:text-white">{item.fullName}</p>
+                     <p className="text-[10px] font-black uppercase tracking-tighter text-indigo-500/70">{item.employeeCode}</p>
+                   </div>
+                 </div>
+                 <StatusBadge 
+                    label={item.attendanceStatus.replaceAll("_", " ")} 
+                    tone={
+                      item.attendanceStatus === "PRESENT" ? "success" :
+                      item.attendanceStatus === "LATE" ? "warning" :
+                      item.attendanceStatus === "ABSENT" ? "danger" : "info"
+                    }
+                 />
+               </div>
+               
+               <div className="flex items-center justify-between rounded-xl bg-gray-50 p-4 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+                 <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">In / Out</p>
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">
+                         {item.punchInTime ? new Date(item.punchInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+                         <span className="mx-1.5 text-gray-300 dark:text-gray-700">•</span>
+                         {item.punchOutTime ? new Date(item.punchOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}
+                      </p>
+                    </div>
+                 </div>
+               </div>
+             </div>
+          ))}
         </div>
       </div>
     </div>

@@ -35,9 +35,14 @@ export function AppModal({
         onClick={onClose}
         aria-label="Close dialog"
       />
-      <div className={`relative w-full ${SIZE_MAP[size]} overflow-hidden bg-white shadow-2xl ring-1 ring-black/5 transition-all dark:bg-gray-900 
-        max-md:rounded-t-[2rem] md:rounded-3xl border border-gray-200 dark:border-gray-800`}>
-        <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5 dark:border-gray-800">
+      <div className={`relative w-full ${SIZE_MAP[size]} flex flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/5 transition-all dark:bg-gray-900 
+        max-md:rounded-t-[2rem] max-md:max-h-[90vh] md:max-h-[85vh] md:rounded-3xl border border-gray-200 dark:border-gray-800 
+        animate-in max-md:slide-in-from-bottom-1/2 md:zoom-in-95 duration-300`}>
+        {/* Mobile drag handle */}
+        <div className="md:hidden flex justify-center w-full pt-3 pb-1" aria-hidden="true">
+          <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full" />
+        </div>
+        <div className="shrink-0 flex items-start justify-between border-b border-gray-100 px-6 py-5 max-md:pt-2 dark:border-gray-800">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
             {description && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>}
@@ -52,8 +57,8 @@ export function AppModal({
             </svg>
           </button>
         </div>
-        <div className="max-h-[85vh] overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="border-t border-gray-100 bg-gray-50/80 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">{footer}</div>}
       </div>
     </div>
   );

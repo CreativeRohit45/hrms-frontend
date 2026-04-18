@@ -1,14 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { getDashboardStats, type DashboardStats } from "../api/dashboard";
+import React, { useMemo, useState } from "react";
 import { punchIn, punchOut } from "../api/attendance";
-import { getDepartmentAbsentees } from "../api/leaves";
-import type { DepartmentAbsenteeDTO } from "../types/leave";
 import {
   AlertCircle,
   Clock,
-  FileClock,
-  MapPin,
   Palmtree,
   UserCheck,
   Users,
@@ -16,51 +10,30 @@ import {
   CalendarDays,
   X,
   Plus,
-  Settings as SettingsIcon
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { EmptyState } from "../components/ui/EmptyState";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAppToast } from "../components/ui/ToastProvider";
+import { useDashboardStats, useDepartmentAbsentees } from "../hooks/queries/useDashboard";
+import { queryClient } from "../lib/queryClient";
+import { queryKeys } from "../lib/queryKeys";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
-  const isManager = user?.role === "SUPER_ADMIN" || user?.role === "HR_ADMIN" || user?.role === "DEPARTMENT_MANAGER";
 
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading: loading } = useDashboardStats();
+  const { data: absentees = [] } = useDepartmentAbsentees();
+
   const [punchLoading, setPunchLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [absentees, setAbsentees] = useState<DepartmentAbsenteeDTO[]>([]);
 
-  useEffect(() => {
-    void fetchDashboard();
-    void fetchTeamAvailability();
-    
+  // Live clock — the only remaining interval, not a data-fetch concern
+  React.useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-
-  async function fetchDashboard() {
-    try {
-      const data = await getDashboardStats();
-      setStats(data);
-    } catch (err) {
-      console.error("Dashboard sync error", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function fetchTeamAvailability() {
-    try {
-      const currentAbsentees = await getDepartmentAbsentees();
-      setAbsentees(currentAbsentees);
-    } catch (err) {
-      console.error("Team sync failed", err);
-    }
-  }
 
   async function handlePunch() {
     if (!stats) return;
@@ -80,7 +53,8 @@ export default function Dashboard() {
         await punchIn(lat, lng);
         pushToast({ title: "Punched In", message: "Shift started.", tone: "success" });
       }
-      await fetchDashboard();
+      // Invalidate the cache — TanStack Query will refetch in the background
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
     } catch (error: any) {
       pushToast({ 
         title: "Punch Failed", 

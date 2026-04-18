@@ -1,48 +1,29 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { getEmployees, deleteEmployee } from "../../api/employees";
+import { useState, useMemo } from "react";
 import type { EmployeeResponse } from "../../types/employee";
 import { PencilLine, Trash2, Search, Clock, Building2 } from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { useAllEmployees, useDeleteEmployee } from "../../hooks/queries/useEmployees";
 
 export default function EmployeeList({ onAddEmployee, onEditEmployee, refreshKey }: { 
   onAddEmployee: () => void, 
   onEditEmployee?: (id: number) => void, 
   refreshKey: number 
 }) {
-  const [employees, setEmployees] = useState<EmployeeResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: employees = [], isLoading, isError, error: queryError, refetch } = useAllEmployees();
+  const deleteMutation = useDeleteEmployee();
+
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const fetchEmployees = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getEmployees();
-      setEmployees(data || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load employees.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
     try {
-      await deleteEmployee(confirmDelete);
+      await deleteMutation.mutateAsync(confirmDelete);
       setConfirmDelete(null);
-      fetchEmployees();
     } catch {
-      setError("Failed to delete employee.");
       setConfirmDelete(null);
     }
   };
-
-  useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees, refreshKey]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => 
@@ -72,6 +53,8 @@ export default function EmployeeList({ onAddEmployee, onEditEmployee, refreshKey
       <p className="text-gray-500 text-sm font-medium">Loading directory...</p>
     </div>
   );
+
+  const errorMessage = isError ? ((queryError as any)?.message || "Failed to load employees.") : null;
 
   return (
     <div className="space-y-6">
@@ -103,10 +86,10 @@ export default function EmployeeList({ onAddEmployee, onEditEmployee, refreshKey
         </div>
       </div>
 
-      {error && (
+      {errorMessage && (
         <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center justify-between">
-          <span className="text-red-600 dark:text-red-400 text-sm font-medium">{error}</span>
-          <button onClick={() => fetchEmployees()} className="text-indigo-600 text-sm font-bold hover:underline">Retry</button>
+          <span className="text-red-600 dark:text-red-400 text-sm font-medium">{errorMessage}</span>
+          <button onClick={() => refetch()} className="text-indigo-600 text-sm font-bold hover:underline">Retry</button>
         </div>
       )}
       

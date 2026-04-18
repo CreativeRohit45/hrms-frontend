@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { 
   CheckCircle2, XCircle, Clock3, CalendarDays, 
   MapPin, UserCircle2, Inbox, ArrowRight,
@@ -7,6 +7,14 @@ import {
 import { useAppToast } from "../../components/ui/ToastProvider";
 import api from "../../api/axios";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { queryClient } from "../../lib/queryClient";
+import { queryKeys } from "../../lib/queryKeys";
+
+// ── TanStack Query hooks (3-way parallel fetching) ────────────────
+import { usePendingLeaves, useApproveLeave, useRejectLeave } from "../../hooks/queries/useLeaves";
+import { usePendingGatepasses, useApproveGatepass, useRejectGatepass } from "../../hooks/queries/useGatepasses";
+import { useQuery } from "@tanstack/react-query";
+import type { AttendanceLogResponse } from "../../types/attendance";
 
 interface UnifiedRequest {
   id: string | number;
@@ -20,92 +28,102 @@ interface UnifiedRequest {
 }
 
 export default function UnifiedInbox() {
-  const [requests, setRequests] = useState<UnifiedRequest[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"ALL" | "LEAVE" | "GATEPASS" | "ATTENDANCE">("ALL");
   const { pushToast } = useAppToast();
 
-  useEffect(() => {
-    fetchRequests();
-  }, []);
+  // ── 3-way parallel data fetching — no waterfall ────────────────
+  const { data: leavesRaw = [], isLoading: leavesLoading } = usePendingLeaves(true);
+  const { data: gatepassesRaw = [], isLoading: gatepassesLoading } = usePendingGatepasses(true);
+  const { data: correctionsRaw = [], isLoading: correctionsLoading } = useQuery<AttendanceLogResponse[]>({
+    queryKey: queryKeys.attendance.pendingCorrections(),
+    queryFn: async () => {
+      const res = await api.get("/api/v1/attendance/pending-corrections");
+      return res.data;
+    },
+  });
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    try {
-      const [leaves, gatepasses, corrections] = await Promise.all([
-        api.get("/api/v1/leaves/pending"),
-        api.get("/api/v1/gatepasses/pending"),
-        api.get("/api/v1/attendance/pending-corrections"),
-      ]);
+  const loading = leavesLoading || gatepassesLoading || correctionsLoading;
 
-      const leavesData = leaves.data || [];
-      const gatepassesData = gatepasses.data || [];
+  // ── Mutations ──────────────────────────────────────────────────
+  const approveLeave = useApproveLeave();
+  const rejectLeave = useRejectLeave();
+  const approveGatepass = useApproveGatepass();
+  const rejectGatepass = useRejectGatepass();
 
-      const normalized: UnifiedRequest[] = [
-        ...leavesData.map((l: any) => ({
-          id: l.id,
-          type: "LEAVE",
-          employeeName: l.fullName,
-          employeeCode: l.employeeCode,
-          details: `${l.leaveTypeName}: ${l.startDate} to ${l.endDate}`,
-          timestamp: l.createdAt || new Date().toISOString(),
-          status: "PENDING",
-          metadata: l
-        })),
-        ...gatepassesData.map((g: any) => ({
-          id: g.id,
-          type: "GATEPASS",
-          employeeName: g.fullName,
-          employeeCode: g.employeeCode,
-          details: `${g.gatepassType}: Out ${new Date(g.requestedOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
-          timestamp: g.createdAt || new Date().toISOString(),
-          status: "PENDING",
-          metadata: g
-        })),
-        ...corrections.data.map((c: any) => ({
-          id: c.id,
-          type: "ATTENDANCE",
-          employeeName: c.fullName,
-          employeeCode: c.employeeCode,
-          details: `Correction for ${c.workDate}: ${new Date(c.requestedPunchInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${new Date(c.requestedPunchOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
-          timestamp: c.workDate,
-          status: "PENDING",
-          metadata: c
-        }))
-      ];
+  // ── Normalize into unified request list ────────────────────────
+  const requests = useMemo<UnifiedRequest[]>(() => {
+    const normalized: UnifiedRequest[] = [
+      ...leavesRaw.map((l: any) => ({
+        id: l.id,
+        type: "LEAVE" as const,
+        employeeName: l.fullName,
+        employeeCode: l.employeeCode,
+        details: `${l.leaveTypeName}: ${l.startDate} to ${l.endDate}`,
+        timestamp: l.createdAt || new Date().toISOString(),
+        status: "PENDING",
+        metadata: l
+      })),
+      ...gatepassesRaw.map((g: any) => ({
+        id: g.id,
+        type: "GATEPASS" as const,
+        employeeName: g.fullName,
+        employeeCode: g.employeeCode,
+        details: `${g.gatepassType}: Out ${new Date(g.requestedOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        timestamp: g.createdAt || new Date().toISOString(),
+        status: "PENDING",
+        metadata: g
+      })),
+      ...correctionsRaw.map((c: any) => ({
+        id: c.id,
+        type: "ATTENDANCE" as const,
+        employeeName: c.fullName,
+        employeeCode: c.employeeCode,
+        details: `Correction for ${c.workDate}: ${new Date(c.requestedPunchInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${new Date(c.requestedPunchOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        timestamp: c.workDate,
+        status: "PENDING",
+        metadata: c
+      }))
+    ];
 
-      setRequests(normalized.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-    } catch (error) {
-      pushToast({ title: "Inbox Sync Error", message: "Failed to load pending requests", tone: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
+    return normalized.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [leavesRaw, gatepassesRaw, correctionsRaw]);
 
   const handleAction = async (request: UnifiedRequest, action: "approve" | "reject") => {
     try {
-      let endpoint = "";
-      let method: "put" | "post" = "put";
-      
       if (request.type === "LEAVE") {
-        endpoint = `/api/v1/leaves/${request.id}/${action}`;
-        method = "put";
+        if (action === "approve") {
+          await approveLeave.mutateAsync(request.id as number);
+        } else {
+          await rejectLeave.mutateAsync({
+            leaveId: request.id as number,
+            data: { rejectionReason: "Manager manual action" },
+          });
+        }
       } else if (request.type === "GATEPASS") {
-        endpoint = `/api/v1/gatepasses/${request.id}/${action}`;
-        method = "post";
+        if (action === "approve") {
+          await approveGatepass.mutateAsync(request.id as number);
+        } else {
+          await rejectGatepass.mutateAsync({
+            id: request.id as number,
+            data: { rejectionReason: "Manager manual action" },
+          });
+        }
       } else if (request.type === "ATTENDANCE") {
-        endpoint = `/api/v1/attendance/corrections/${request.id}/${action}`;
-        method = "put";
-      }
-
-      if (method === "put") {
-        await api.put(endpoint, action === "reject" ? { rejectionReason: "Manager manual action" } : {});
-      } else {
-        await api.post(endpoint, action === "reject" ? { rejectionReason: "Manager manual action" } : {});
+        // Attendance corrections use direct API calls (already has hooks
+        // in useAttendance.ts, but here we use the simple endpoint)
+        const endpoint = `/api/v1/attendance/corrections/${request.id}/${action}`;
+        if (action === "approve") {
+          await api.put(endpoint);
+        } else {
+          await api.put(endpoint, { rejectionReason: "Manager manual action" });
+        }
+        // Invalidate attendance caches
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.pendingCorrections() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
       }
 
       pushToast({ title: "Success", message: `${request.type} ${action === "approve" ? "approved" : "rejected"}`, tone: "success" });
-      fetchRequests();
     } catch (error) {
       pushToast({ title: "Action Failed", message: `Failed to ${action} ${request.type} request`, tone: "error" });
     }

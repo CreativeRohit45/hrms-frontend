@@ -1,10 +1,7 @@
-// src/pages/leaves/index.tsx — Leave Management Dashboard
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
-  getMyBalances, getMyLeaves, getLeaveTypes, applyForLeave, cancelLeave,
-  getMyAuditTrail, getPendingLeaves, approveLeave, rejectLeave, grantLeave,
-  revokeLeave, previewLeave
+  getMyAuditTrail, previewLeave
 } from "../../api/leaves";
 import type {
   LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
@@ -18,25 +15,30 @@ import {
 } from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { AppModal } from "../../components/ui/AppModal";
+import {
+  useMyBalances, useMyLeaves, useLeaveTypes, usePendingLeaves,
+  useCancelLeave, useApproveLeave, useRejectLeave, useRevokeLeave,
+  useApplyLeave, useGrantLeave, useMyAuditTrail
+} from "../../hooks/queries/useLeaves";
 
 // ═══════════════════════════════════════════════════════════════════
 //  COLOR MAP
 // ═══════════════════════════════════════════════════════════════════
 const TYPE_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
-  CL:  { bg: "bg-sky-50 dark:bg-sky-950/30",       text: "text-sky-600 dark:text-sky-400",       bar: "bg-sky-500" },
-  SL:  { bg: "bg-rose-50 dark:bg-rose-950/30",     text: "text-rose-600 dark:text-rose-400",     bar: "bg-rose-500" },
-  EL:  { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" },
-  LWP: { bg: "bg-gray-100 dark:bg-gray-800/50",    text: "text-gray-600 dark:text-gray-400",     bar: "bg-gray-400" },
+  CL: { bg: "bg-sky-50 dark:bg-sky-950/30", text: "text-sky-600 dark:text-sky-400", bar: "bg-sky-500" },
+  SL: { bg: "bg-rose-50 dark:bg-rose-950/30", text: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500" },
+  EL: { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" },
+  LWP: { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-600 dark:text-gray-400", bar: "bg-gray-400" },
   CMP: { bg: "bg-violet-50 dark:bg-violet-950/30", text: "text-violet-600 dark:text-violet-400", bar: "bg-violet-500" },
-  ML:  { bg: "bg-pink-50 dark:bg-pink-950/30",     text: "text-pink-600 dark:text-pink-400",     bar: "bg-pink-500" },
-  PL:  { bg: "bg-indigo-50 dark:bg-indigo-950/30", text: "text-indigo-600 dark:text-indigo-400", bar: "bg-indigo-500" },
+  ML: { bg: "bg-pink-50 dark:bg-pink-950/30", text: "text-pink-600 dark:text-pink-400", bar: "bg-pink-500" },
+  PL: { bg: "bg-indigo-50 dark:bg-indigo-950/30", text: "text-indigo-600 dark:text-indigo-400", bar: "bg-indigo-500" },
 };
 const defaultColor = { bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500" };
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING:   "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
-  APPROVED:  "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
-  REJECTED:  "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-red-200 dark:border-red-800",
+  PENDING: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+  APPROVED: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
+  REJECTED: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-red-200 dark:border-red-800",
   CANCELLED: "bg-gray-100 text-gray-500 dark:bg-gray-800/50 dark:text-gray-400 border-gray-200 dark:border-gray-700",
 };
 
@@ -48,14 +50,21 @@ export default function LeavesPage() {
   const isAdmin = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
   const isManager = user?.role === "DEPARTMENT_MANAGER" || isAdmin;
 
-  // Data state
-  const [balances, setBalances] = useState<LeaveBalanceResponse[]>([]);
-  const [leaves, setLeaves] = useState<LeaveResponse[]>([]);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeDTO[]>([]);
-  const [pendingLeaves, setPendingLeaves] = useState<LeaveResponse[]>([]);
+  // ── TanStack Query: Data fetching via custom hooks ─────────────
+  const { data: balances = [], isLoading: balancesLoading } = useMyBalances();
+  const { data: leaves = [], isLoading: leavesLoading } = useMyLeaves();
+  const { data: leaveTypes = [] } = useLeaveTypes();
+  const { data: pendingLeaves = [] } = usePendingLeaves(isManager);
 
-  // UI state
-  const [loading, setLoading] = useState(true);
+  const loading = balancesLoading || leavesLoading;
+
+  // ── TanStack Query: Mutations with cross-domain invalidation ───
+  const cancelMutation = useCancelLeave();
+  const approveMutation = useApproveLeave();
+  const rejectMutation = useRejectLeave();
+  const revokeMutation = useRevokeLeave();
+
+  // UI state (unchanged)
   const [activeTab, setActiveTab] = useState<"my" | "approvals">("my");
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
@@ -67,31 +76,12 @@ export default function LeavesPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  // ── Data Fetching ────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    try {
-      const [b, l, t] = await Promise.all([getMyBalances(), getMyLeaves(), getLeaveTypes()]);
-      setBalances(b);
-      setLeaves(l);
-      setLeaveTypes(t);
-      if (isManager) {
-        try { setPendingLeaves(await getPendingLeaves()); } catch {}
-      }
-    } catch (err) {
-      console.error("Leave data fetch failed", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [isManager]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
   function showToast(type: "success" | "error", msg: string) {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
   }
 
-  // ── Actions ──────────────────────────────────────────────────────
+  // ── Actions (now using mutation hooks) ─────────────────────────
   function handleCancel(id: number) {
     setCancelTarget(id);
   }
@@ -99,10 +89,9 @@ export default function LeavesPage() {
     if (!cancelTarget) return;
     setActionLoading(cancelTarget);
     try {
-      await cancelLeave(cancelTarget);
+      await cancelMutation.mutateAsync(cancelTarget);
       showToast("success", "Leave cancelled & balance refunded.");
       setCancelTarget(null);
-      fetchData();
     } catch (err: any) {
       showToast("error", err?.response?.data?.message || "Cancel failed.");
     } finally { setActionLoading(null); }
@@ -111,9 +100,8 @@ export default function LeavesPage() {
   async function handleApprove(id: number) {
     setActionLoading(id);
     try {
-      await approveLeave(id);
+      await approveMutation.mutateAsync(id);
       showToast("success", "Leave approved.");
-      fetchData();
     } catch (err: any) {
       showToast("error", err?.response?.data?.message || "Approve failed.");
     } finally { setActionLoading(null); }
@@ -127,11 +115,10 @@ export default function LeavesPage() {
     if (!revokeTarget || !revokeReason.trim()) return;
     setActionLoading(revokeTarget);
     try {
-      await revokeLeave(revokeTarget, revokeReason.trim());
+      await revokeMutation.mutateAsync({ leaveId: revokeTarget, reason: revokeReason.trim() });
       showToast("success", "Leave revoked & balance refunded.");
       setRevokeTarget(null);
       setRevokeReason("");
-      fetchData();
     } catch (err: any) {
       showToast("error", err?.response?.data?.message || "Revoke failed.");
     } finally { setActionLoading(null); }
@@ -152,11 +139,10 @@ export default function LeavesPage() {
 
       {/* ── Toast ──────────────────────────────────────────────── */}
       {toast && (
-        <div className={`fixed top-20 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2 animate-in slide-in-from-right duration-300 ${
-          toast.type === "success"
+        <div className={`fixed top-20 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2 animate-in slide-in-from-right duration-300 ${toast.type === "success"
             ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
             : "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
-        }`}>
+          }`}>
           {toast.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
           {toast.msg}
           <button onClick={() => setToast(null)} className="ml-2 opacity-50 hover:opacity-100"><X size={14} /></button>
@@ -309,21 +295,21 @@ export default function LeavesPage() {
                   return (
                     <div key={l.id} className="p-5 space-y-4">
                       <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${c.bg} ${c.text}`}>{l.leaveTypeCode}</span>
-                            <span className="text-sm font-bold">{l.appliedDays} Days</span>
-                         </div>
-                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_BADGE[l.status] || ""}`}>
-                            {l.status}
-                         </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${c.bg} ${c.text}`}>{l.leaveTypeCode}</span>
+                          <span className="text-sm font-bold">{l.appliedDays} Days</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${STATUS_BADGE[l.status] || ""}`}>
+                          {l.status}
+                        </span>
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-gray-500">{l.startDate} to {l.endDate}</p>
                         <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{l.reason || 'No reason provided'}"</p>
                       </div>
                       {canCancel && (
-                        <button 
-                          onClick={() => handleCancel(l.id)} 
+                        <button
+                          onClick={() => handleCancel(l.id)}
                           disabled={actionLoading === l.id}
                           className="w-full py-3 rounded-xl bg-red-50 text-red-600 text-xs font-bold transition-all active:scale-95"
                         >
@@ -353,61 +339,104 @@ export default function LeavesPage() {
               <p className="text-sm">All caught up! No pending approvals.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[10px] uppercase tracking-widest">
-                    <th className="px-5 py-3">Employee</th>
-                    <th className="px-5 py-3">Type</th>
-                    <th className="px-5 py-3">Dates</th>
-                    <th className="px-5 py-3">Days</th>
-                    <th className="px-5 py-3">Reason</th>
-                    <th className="px-5 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {pendingLeaves.map((l) => (
-                    <tr key={l.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors text-gray-700 dark:text-gray-300">
-                      <td className="px-5 py-3">
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white text-xs">{l.fullName}</p>
-                          <p className="text-[10px] text-gray-400 font-mono">{l.employeeCode}</p>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${(TYPE_COLORS[l.leaveTypeCode] || defaultColor).bg} ${(TYPE_COLORS[l.leaveTypeCode] || defaultColor).text}`}>
-                          {l.leaveTypeCode}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 font-mono text-xs whitespace-nowrap">
-                        {l.startDate}{l.startDate !== l.endDate && ` → ${l.endDate}`}
-                        {l.halfDay && <span className="ml-1 text-[10px] text-amber-500">½</span>}
-                      </td>
-                      <td className="px-5 py-3 font-mono font-bold tabular-nums">{l.appliedDays}</td>
-                      <td className="px-5 py-3 text-xs text-gray-500 max-w-[160px] truncate">{l.reason || "—"}</td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleApprove(l.id)} disabled={actionLoading === l.id}
-                            className="px-3 py-1.5 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
-                            <CheckCircle2 size={12} /> Approve
-                          </button>
-                          <button onClick={() => setShowRejectModal(l.id)} disabled={actionLoading === l.id}
-                            className="px-3 py-1.5 text-xs font-bold bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 flex items-center gap-1 border border-red-200 dark:border-red-800">
-                            <XCircle size={12} /> Reject
-                          </button>
-                          {isAdmin && (
-                            <button onClick={() => handleRevoke(l.id)} disabled={actionLoading === l.id}
-                              className="px-2 py-1.5 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50" title="Revoke (Admin)">
-                              <Ban size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+            <>
+              <div className="max-md:hidden overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[10px] uppercase tracking-widest">
+                      <th className="px-5 py-3">Employee</th>
+                      <th className="px-5 py-3">Type</th>
+                      <th className="px-5 py-3">Dates</th>
+                      <th className="px-5 py-3">Days</th>
+                      <th className="px-5 py-3">Reason</th>
+                      <th className="px-5 py-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                    {pendingLeaves.map((l) => (
+                      <tr key={l.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors text-gray-700 dark:text-gray-300">
+                        <td className="px-5 py-3">
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white text-xs">{l.fullName}</p>
+                            <p className="text-[10px] text-gray-400 font-mono">{l.employeeCode}</p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${(TYPE_COLORS[l.leaveTypeCode] || defaultColor).bg} ${(TYPE_COLORS[l.leaveTypeCode] || defaultColor).text}`}>
+                            {l.leaveTypeCode}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 font-mono text-xs whitespace-nowrap">
+                          {l.startDate}{l.startDate !== l.endDate && ` → ${l.endDate}`}
+                          {l.halfDay && <span className="ml-1 text-[10px] text-amber-500">½</span>}
+                        </td>
+                        <td className="px-5 py-3 font-mono font-bold tabular-nums">{l.appliedDays}</td>
+                        <td className="px-5 py-3 text-xs text-gray-500 max-w-[160px] truncate">{l.reason || "—"}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleApprove(l.id)} disabled={actionLoading === l.id}
+                              className="px-3 py-1.5 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
+                              <CheckCircle2 size={12} /> Approve
+                            </button>
+                            <button onClick={() => setShowRejectModal(l.id)} disabled={actionLoading === l.id}
+                              className="px-3 py-1.5 text-xs font-bold bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 flex items-center gap-1 border border-red-200 dark:border-red-800">
+                              <XCircle size={12} /> Reject
+                            </button>
+                            {isAdmin && (
+                              <button onClick={() => handleRevoke(l.id)} disabled={actionLoading === l.id}
+                                className="px-2 py-1.5 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50" title="Revoke (Admin)">
+                                <Ban size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* MOBILE CARDS */}
+              <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                {pendingLeaves.map((l) => (
+                  <div key={l.id} className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{l.fullName}</p>
+                        <p className="text-[10px] text-gray-400 font-mono">{l.employeeCode}</p>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${(TYPE_COLORS[l.leaveTypeCode] || defaultColor).bg} ${(TYPE_COLORS[l.leaveTypeCode] || defaultColor).text}`}>
+                        {l.leaveTypeCode}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="font-mono text-xs font-bold text-gray-700 dark:text-gray-300">
+                        {l.startDate}{l.startDate !== l.endDate && ` → ${l.endDate}`}
+                        <span className="ml-2 text-indigo-500">{l.appliedDays} Days</span>
+                        {l.halfDay && <span className="ml-1 text-[10px] text-amber-500">½</span>}
+                      </p>
+                      <p className="text-xs text-gray-500 italic">"{l.reason || 'No reason provided'}"</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button onClick={() => handleApprove(l.id)} disabled={actionLoading === l.id} className="py-2.5 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 border border-emerald-200 dark:border-emerald-800">
+                        <CheckCircle2 size={14} /> Approve
+                      </button>
+                      <button onClick={() => setShowRejectModal(l.id)} disabled={actionLoading === l.id} className="py-2.5 text-xs font-bold bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 border border-red-200 dark:border-red-800">
+                        <XCircle size={14} /> Reject
+                      </button>
+                    </div>
+
+                    {isAdmin && (
+                      <button onClick={() => handleRevoke(l.id)} disabled={actionLoading === l.id} className="w-full py-2 mt-2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                        <Ban size={14} /> Revoke Request
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -420,7 +449,7 @@ export default function LeavesPage() {
         <ApplyModal
           leaveTypes={leaveTypes}
           onClose={() => setShowApplyModal(false)}
-          onSuccess={() => { setShowApplyModal(false); showToast("success", "Leave applied successfully!"); fetchData(); }}
+          onSuccess={() => { setShowApplyModal(false); showToast("success", "Leave applied successfully!"); }}
           onError={(msg) => showToast("error", msg)}
         />
       )}
@@ -429,7 +458,7 @@ export default function LeavesPage() {
         <RejectModal
           leaveId={showRejectModal}
           onClose={() => setShowRejectModal(null)}
-          onSuccess={() => { setShowRejectModal(null); showToast("success", "Leave rejected."); fetchData(); }}
+          onSuccess={() => { setShowRejectModal(null); showToast("success", "Leave rejected."); }}
           onError={(msg) => showToast("error", msg)}
         />
       )}
@@ -442,7 +471,7 @@ export default function LeavesPage() {
         <GrantModal
           leaveTypes={leaveTypes}
           onClose={() => setShowGrantModal(false)}
-          onSuccess={() => { setShowGrantModal(false); showToast("success", "Leave granted successfully!"); fetchData(); }}
+          onSuccess={() => { setShowGrantModal(false); showToast("success", "Leave granted successfully!"); }}
           onError={(msg) => showToast("error", msg)}
         />
       )}
@@ -532,6 +561,8 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
   const [preview, setPreview] = useState<LeavePreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  const applyMutation = useApplyLeave();
+
   // 1. Half-Day Date Sync Lock
   function handleHalfDayToggle(val: boolean) {
     setForm(prev => ({
@@ -579,7 +610,7 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
     }
     setSubmitting(true);
     try {
-      await applyForLeave(form);
+      await applyMutation.mutateAsync(form);
       onSuccess();
     } catch (err: any) {
       onError(err?.response?.data?.message || "Application failed.");
@@ -594,9 +625,9 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
       <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-md transition-opacity duration-300" onClick={onClose} />
-      
+
       <div className="relative bg-white dark:bg-gray-950 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border border-white/10 w-full max-w-lg max-h-[92vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-        
+
         {/* Header */}
         <div className="relative p-8 bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 text-white overflow-hidden flex-shrink-0">
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
@@ -618,16 +649,16 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-6">
-          
+
           {/* Leave Type & Half-Day */}
           <section className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelCls}>Select Leave Type</label>
                 <div className="relative group">
-                  <select 
-                    value={form.leaveTypeId} 
-                    onChange={(e) => setForm({ ...form, leaveTypeId: Number(e.target.value) })} 
+                  <select
+                    value={form.leaveTypeId}
+                    onChange={(e) => setForm({ ...form, leaveTypeId: Number(e.target.value) })}
                     className="input-base pr-10 appearance-none bg-gray-50 dark:bg-gray-900 text-sm font-semibold"
                     required
                   >
@@ -679,11 +710,11 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
             <div className="animate-in slide-in-from-top-2 duration-300">
               <label className={labelCls}>Which Session?</label>
               <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800">
-                <button type="button" onClick={() => setForm({...form, halfDaySession: "FIRST_HALF"})}
+                <button type="button" onClick={() => setForm({ ...form, halfDaySession: "FIRST_HALF" })}
                   className={`py-2 text-[10px] font-black uppercase rounded-lg transition-all ${form.halfDaySession === "FIRST_HALF" ? "bg-white dark:bg-gray-800 text-amber-600 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
                   First Half
                 </button>
-                <button type="button" onClick={() => setForm({...form, halfDaySession: "SECOND_HALF"})}
+                <button type="button" onClick={() => setForm({ ...form, halfDaySession: "SECOND_HALF" })}
                   className={`py-2 text-[10px] font-black uppercase rounded-lg transition-all ${form.halfDaySession === "SECOND_HALF" ? "bg-white dark:bg-gray-800 text-amber-600 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
                   Second Half
                 </button>
@@ -693,13 +724,12 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
 
           {/* Preview Panel */}
           {(form.startDate && form.endDate) && (
-            <div className={`rounded-3xl border-2 p-5 transition-all duration-300 relative overflow-hidden ${
-              previewLoading
+            <div className={`rounded-3xl border-2 p-5 transition-all duration-300 relative overflow-hidden ${previewLoading
                 ? "border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30"
                 : hasErrors
                   ? "border-amber-200/50 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/20"
                   : "border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-inner"
-            }`}>
+              }`}>
               {previewLoading ? (
                 <div className="flex items-center justify-center gap-3 py-4 text-gray-400 text-[10px] font-black uppercase tracking-widest">
                   <div className="w-4 h-4 border-[3px] border-gray-200 border-t-indigo-600 rounded-full animate-spin" />
@@ -715,7 +745,7 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
                       </div>
                       <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1 italic">Backend Math Applied</p>
                     </div>
-                    
+
                     <div className="text-right bg-white dark:bg-gray-800 p-3 rounded-2xl border border-white dark:border-gray-700 shadow-sm">
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Projected Balance</p>
                       <div className="flex items-center justify-end gap-2">
@@ -747,11 +777,11 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
           <div className="space-y-4">
             <div>
               <label className={labelCls}>Purpose of Leave</label>
-              <textarea 
-                value={form.reason || ""} 
+              <textarea
+                value={form.reason || ""}
                 onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                className="input-base min-h-[100px] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-sm" 
-                placeholder="Brief reason for your absence..." 
+                className="input-base min-h-[100px] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-sm"
+                placeholder="Brief reason for your absence..."
               />
             </div>
           </div>
@@ -759,8 +789,8 @@ function ApplyModal({ leaveTypes, onClose, onSuccess, onError }: {
 
         <div className="p-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 flex items-center justify-between">
           <button type="button" onClick={onClose} className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">Discard</button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             onClick={handleSubmit}
             disabled={submitting || (previewLoading && !preview)}
             className="px-10 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-800 text-white font-black rounded-2xl text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center gap-3"
@@ -787,13 +817,15 @@ function RejectModal({ leaveId, onClose, onSuccess, onError }: {
 }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  
+  const rejectMutation = useRejectLeave();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!reason.trim()) return;
     setSubmitting(true);
     try {
-      await rejectLeave(leaveId, { rejectionReason: reason });
+      await rejectMutation.mutateAsync({ leaveId, data: { rejectionReason: reason } });
       onSuccess();
     } catch (err: any) {
       onError(err?.response?.data?.message || "Reject failed.");
@@ -833,26 +865,15 @@ function RejectModal({ leaveId, onClose, onSuccess, onError }: {
 //  AUDIT LEDGER MODAL
 // ═══════════════════════════════════════════════════════════════════
 function AuditModal({ onClose }: { onClose: () => void }) {
-  const [audits, setAudits] = useState<LeaveBalanceAuditResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await getMyAuditTrail();
-        setAudits(data);
-      } catch { }
-      finally { setLoading(false); }
-    })();
-  }, []);
+  const { data: audits = [], isLoading: loading } = useMyAuditTrail();
 
   const txIcon: Record<string, React.ReactNode> = {
-    ACCRUAL:          <ArrowDownCircle size={14} className="text-emerald-500" />,
-    DEDUCTION:        <ArrowUpCircle size={14} className="text-red-500" />,
-    REFUND:           <ArrowDownCircle size={14} className="text-sky-500" />,
-    CARRY_FORWARD:    <ArrowDownCircle size={14} className="text-indigo-500" />,
-    EXPIRY:           <ArrowUpCircle size={14} className="text-gray-400" />,
-    MANUAL_ADJUSTMENT:<ArrowDownCircle size={14} className="text-amber-500" />,
+    ACCRUAL: <ArrowDownCircle size={14} className="text-emerald-500" />,
+    DEDUCTION: <ArrowUpCircle size={14} className="text-red-500" />,
+    REFUND: <ArrowDownCircle size={14} className="text-sky-500" />,
+    CARRY_FORWARD: <ArrowDownCircle size={14} className="text-indigo-500" />,
+    EXPIRY: <ArrowUpCircle size={14} className="text-gray-400" />,
+    MANUAL_ADJUSTMENT: <ArrowDownCircle size={14} className="text-amber-500" />,
   };
 
   return (
@@ -918,11 +939,13 @@ function GrantModal({ leaveTypes, onClose, onSuccess, onError }: {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  const grantMutation = useGrantLeave();
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await grantLeave(form);
+      await grantMutation.mutateAsync(form);
       onSuccess();
     } catch (err: any) {
       onError(err?.response?.data?.message || "Grant failed.");

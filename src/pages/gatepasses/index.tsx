@@ -1,22 +1,22 @@
-// src/pages/gatepasses/index.tsx — Gatepass Management Dashboard
-import React, { useEffect, useState, useCallback } from "react";
+// src/pages/gatepasses/index.tsx — Gatepass Management Dashboard (TanStack Query)
+import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import {
-  applyGatepass,
-  approveGatepass,
-  rejectGatepass,
-  cancelGatepass,
-  markExit,
-  markEntry,
-  getMyGatepasses,
-  getPendingGatepasses
-} from "../../api/gatepass";
-import type { GatepassResponse, GatepassApplyRequest } from "../../types/gatepass";
+import type { GatepassApplyRequest } from "../../types/gatepass";
 import {
   MapPin, Plus, X, Clock, CheckCircle2, XCircle, Ban,
   FileText, AlertCircle, ArrowRightLeft,
   ShieldCheck, UserCheck, Timer, LogOut, LogIn
 } from "lucide-react";
+import {
+  useMyGatepasses,
+  usePendingGatepasses,
+  useApplyGatepass,
+  useApproveGatepass,
+  useRejectGatepass,
+  useCancelGatepass,
+  useMarkExit,
+  useMarkEntry,
+} from "../../hooks/queries/useGatepasses";
 
 // ═══════════════════════════════════════════════════════════════════
 //  UI CONFIG
@@ -43,10 +43,17 @@ export default function GatepassPage() {
   const isAdmin = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
   const isManager = user?.role === "DEPARTMENT_MANAGER" || isAdmin;
 
-  // Data state
-  const [gatepasses, setGatepasses] = useState<GatepassResponse[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<GatepassResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ── TanStack Query ──────────────────────────────────────────────
+  const { data: gatepasses = [], isLoading: loadingMy } = useMyGatepasses();
+  const { data: pendingRequests = [] } = usePendingGatepasses(isManager);
+
+  const approveMutation = useApproveGatepass();
+  const rejectMutation = useRejectGatepass();
+  const cancelMutation = useCancelGatepass();
+  const exitMutation = useMarkExit();
+  const entryMutation = useMarkEntry();
+
+  const loading = loadingMy;
 
   // UI state
   const [activeTab, setActiveTab] = useState<"my" | "approvals">("my");
@@ -55,39 +62,19 @@ export default function GatepassPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const my = await getMyGatepasses();
-      setGatepasses(Array.isArray(my) ? my : []);
-      if (isManager) {
-        const pending = await getPendingGatepasses();
-        setPendingRequests(Array.isArray(pending) ? pending : []);
-      }
-    } catch (err) {
-      console.error("Gatepass data fetch failed", err);
-      setGatepasses([]);
-      setPendingRequests([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [isManager]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
   const showToast = (type: "success" | "error", msg: string) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // ── Actions ──────────────────────────────────────────────────────
+  // ── Actions (now mutation-powered) ──────────────────────────────
 
-  async function handleAction(promise: Promise<any>, successMsg: string) {
+  async function handleAction(mutationFn: () => Promise<any>, successMsg: string) {
     try {
-      await promise;
+      await mutationFn();
       showToast("success", successMsg);
-      fetchData();
     } catch (err: any) {
-      showToast("error", err?.response?.data?.message || "Action failed.");
+      showToast("error", err?.response?.data?.message || err?.message || "Action failed.");
     }
   }
 
@@ -238,7 +225,7 @@ export default function GatepassPage() {
                             <>
                               {g.status === "PENDING" && (
                                 <button
-                                  onClick={() => handleAction(cancelGatepass(g.id), "Request cancelled.")}
+                                  onClick={() => handleAction(() => cancelMutation.mutateAsync(g.id), "Request cancelled.")}
                                   className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
                                   title="Cancel Request"
                                 >
@@ -252,7 +239,7 @@ export default function GatepassPage() {
                           ) : (
                             <>
                               <button
-                                onClick={() => handleAction(approveGatepass(g.id), "Gatepass APPROVED.")}
+                                onClick={() => handleAction(() => approveMutation.mutateAsync(g.id), "Gatepass APPROVED.")}
                                 className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black rounded-lg shadow-lg shadow-emerald-500/20 transition-all uppercase"
                               >
                                 Approve
@@ -317,7 +304,7 @@ export default function GatepassPage() {
                       {activeTab === "my" ? (
                         g.status === "PENDING" && (
                           <button 
-                            onClick={() => handleAction(cancelGatepass(g.id), "Request cancelled.")}
+                            onClick={() => handleAction(() => cancelMutation.mutateAsync(g.id), "Request cancelled.")}
                             className="w-full py-3 rounded-xl bg-red-50 text-red-600 text-xs font-bold active:scale-95"
                           >
                             Cancel Request
@@ -326,7 +313,7 @@ export default function GatepassPage() {
                       ) : (
                         <div className="flex gap-2">
                            <button 
-                              onClick={() => handleAction(approveGatepass(g.id), "Gatepass APPROVED.")}
+                              onClick={() => handleAction(() => approveMutation.mutateAsync(g.id), "Gatepass APPROVED.")}
                               className="flex-1 py-3 rounded-xl bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20"
                            >
                               Approve
@@ -387,7 +374,7 @@ export default function GatepassPage() {
 
                   {activeGatepass.actualOutTime === null ? (
                     <button
-                      onClick={() => handleAction(markExit(activeGatepass.id), "Exit recorded. Shift remains active.")}
+                      onClick={() => handleAction(() => exitMutation.mutateAsync(activeGatepass.id), "Exit recorded. Shift remains active.")}
                       className="w-full flex items-center justify-center gap-3 py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-black shadow-xl shadow-rose-500/20 transition-all hover:-translate-y-1 active:scale-95 group"
                     >
                       <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
@@ -407,7 +394,7 @@ export default function GatepassPage() {
                         </div>
                       </div>
                       <button
-                        onClick={() => handleAction(markEntry(activeGatepass.id), "Entry recorded. Payroll deduction finalised.")}
+                        onClick={() => handleAction(() => entryMutation.mutateAsync(activeGatepass.id), "Entry recorded. Payroll deduction finalised.")}
                         className="w-full flex items-center justify-center gap-3 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black shadow-xl shadow-emerald-600/20 transition-all hover:-translate-y-1 active:scale-95 group"
                       >
                         <LogIn size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -477,7 +464,7 @@ export default function GatepassPage() {
                 </button>
               </div>
 
-              <ApplyForm onCancel={() => setShowApplyModal(false)} onSuccess={() => { setShowApplyModal(false); fetchData(); }} showToast={showToast} />
+              <ApplyForm onCancel={() => setShowApplyModal(false)} onSuccess={() => { setShowApplyModal(false); }} showToast={showToast} />
             </div>
           </div>
         </div>
@@ -512,7 +499,10 @@ export default function GatepassPage() {
                   <button
                     onClick={() => {
                       if (!rejectReason.trim()) return;
-                      handleAction(rejectGatepass(showRejectModal, { rejectionReason: rejectReason.trim() }), "Application rejected.");
+                      handleAction(
+                        () => rejectMutation.mutateAsync({ id: showRejectModal, data: { rejectionReason: rejectReason.trim() } }),
+                        "Application rejected."
+                      );
                       setShowRejectModal(null);
                       setRejectReason("");
                     }}
@@ -538,22 +528,20 @@ function ApplyForm({ onCancel, onSuccess, showToast }: { onCancel: () => void; o
     gatepassType: "OFFICIAL",
     reason: ""
   });
-  const [loading, setLoading] = useState(false);
+
+  const applyMutation = useApplyGatepass();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!formData.requestedOutTime || !formData.requestedInTime || !formData.reason) {
       return showToast("error", "Please fill all required fields.");
     }
-    setLoading(true);
     try {
-      await applyGatepass(formData);
+      await applyMutation.mutateAsync(formData);
       showToast("success", "Application submitted successfully.");
       onSuccess();
     } catch (err: any) {
       showToast("error", err?.response?.data?.message || "Submission failed.");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -643,13 +631,12 @@ function ApplyForm({ onCancel, onSuccess, showToast }: { onCancel: () => void; o
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={applyMutation.isPending}
           className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-600/20 transition-all uppercase tracking-widest"
         >
-          {loading ? "Submitting..." : "Send Request"}
+          {applyMutation.isPending ? "Submitting..." : "Send Request"}
         </button>
       </div>
     </form>
   );
 }
-
