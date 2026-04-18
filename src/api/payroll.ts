@@ -18,3 +18,8 @@ export const lockPayroll = (month: number, year: number) =>
 
 export const getPayslipDetail = (recordId: number) => 
   apiClient.get<PayslipResponse>(`${BASE}/payslip/${recordId}`).then(r => r.data);
+
+export const downloadPayslip = (recordId: number) =>
+  apiClient.get(`${BASE}/payslip/${recordId}/download`, {
+    responseType: 'blob'
+  });

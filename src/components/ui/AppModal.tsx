@@ -42,7 +42,7 @@ export function AppModal({
         <div className="md:hidden flex justify-center w-full pt-3 pb-1" aria-hidden="true">
           <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full" />
         </div>
-        <div className="shrink-0 flex items-start justify-between border-b border-gray-100 px-6 py-5 max-md:pt-2 dark:border-gray-800">
+        <div className="shrink-0 flex items-start justify-between border-b border-gray-100 px-4 sm:px-6 py-5 max-md:pt-2 dark:border-gray-800">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
             {description && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>}
@@ -57,8 +57,8 @@ export function AppModal({
             </svg>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">{children}</div>
+        {footer && <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 px-4 sm:px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">{footer}</div>}
       </div>
     </div>
   );

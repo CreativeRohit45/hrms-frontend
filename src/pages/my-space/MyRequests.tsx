@@ -63,7 +63,7 @@ function fmtTime(iso: string) {
 // py-0 + h-12 keeps every field a uniform 48 px height.
 // ─────────────────────────────────────────────────────────────────
 const fieldBase =
-  "h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm font-semibold " +
+  "h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base sm:text-sm font-semibold " +
   "text-gray-900 outline-none transition-all " +
   "focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 " +
   "dark:border-gray-700 dark:bg-gray-800/60 dark:text-white " +
@@ -88,7 +88,7 @@ function FormTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) 
     <textarea
       {...props}
       className={
-        "w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-medium " +
+        "w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-base sm:text-sm font-medium " +
         "text-gray-900 outline-none resize-none transition-all leading-relaxed " +
         "focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 " +
         "dark:border-gray-700 dark:bg-gray-800/60 dark:text-white " +
@@ -112,7 +112,7 @@ function DateInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
         type="date"
         {...props}
         className={
-          `${fieldBase} appearance-none bg-transparent pl-10 ` +
+          `${fieldBase} min-w-0 appearance-none bg-transparent pl-10 ` +
           "dark:[color-scheme:dark]"
         }
       />
@@ -132,7 +132,7 @@ function DateTimeInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
         type="datetime-local"
         {...props}
         className={
-          `${fieldBase} appearance-none bg-transparent pl-10 ` +
+          `${fieldBase} min-w-0 appearance-none bg-transparent pl-10 ` +
           "dark:[color-scheme:dark]"
         }
       />
@@ -197,7 +197,7 @@ function PillToggle<T extends string>({
     orange: "bg-orange-500 text-white shadow-md shadow-orange-500/20",
   };
   return (
-    <div className="flex gap-1 rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
+    <div className="flex gap-1 overflow-x-auto no-scrollbar rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -205,7 +205,7 @@ function PillToggle<T extends string>({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            className={`flex flex-1 min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 ${active
+            className={`flex flex-1 min-w-max min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 ${active
               ? activeMap[activeColor]
               : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               }`}
@@ -239,7 +239,7 @@ function SegmentedControl({
   options: TabOption[];
 }) {
   return (
-    <div className="flex w-full gap-1 rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
+    <div className="flex w-full gap-1 overflow-x-auto no-scrollbar rounded-2xl bg-gray-100 p-1 dark:bg-gray-800">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -248,8 +248,8 @@ function SegmentedControl({
             type="button"
             onClick={() => onChange(opt.value)}
             className={[
-              "flex flex-1 min-h-[44px] items-center justify-center gap-1.5",
-              "rounded-xl px-2 py-2 text-xs font-bold transition-all duration-200",
+              "flex flex-1 min-w-max min-h-[44px] items-center justify-center gap-1.5",
+              "rounded-xl px-3 py-2 text-xs font-bold transition-all duration-200",
               active
                 ? "bg-white text-gray-900 shadow-md dark:bg-gray-700 dark:text-white"
                 : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300",
@@ -260,7 +260,7 @@ function SegmentedControl({
             <span
               className={[
                 "inline-flex h-4 min-w-[1rem] items-center justify-center",
-                "rounded-full px-1 text-[10px] font-black leading-none",
+                "rounded-full px-1.5 text-[10px] font-black leading-none",
                 active
                   ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
                   : "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
@@ -700,7 +700,7 @@ export default function MyRequests() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 px-4 pb-28 pt-4 sm:px-6">
+    <div className="mx-auto w-full max-w-3xl overflow-hidden space-y-6 px-4 sm:px-6 md:px-8 pb-28 pt-4">
 
       {/* ── MODAL PORTAL ──────────────────────────────────────────── */}
       <div className="relative z-[1000]">

@@ -1,13 +1,247 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import type { EmployeeResponse } from "../../types/employee";
-import { PencilLine, Trash2, Search, Clock, Building2 } from "lucide-react";
+import {
+  PencilLine, Trash2, Search, Clock,
+  Building2, Users, MoreVertical, UserPlus,
+  X, AlertTriangle
+} from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { useAllEmployees, useDeleteEmployee } from "../../hooks/queries/useEmployees";
 
-export default function EmployeeList({ onAddEmployee, onEditEmployee, refreshKey }: { 
-  onAddEmployee: () => void, 
-  onEditEmployee?: (id: number) => void, 
-  refreshKey: number 
+// ── Avatar color palette (deterministic by name) ──────────────────
+const AVATAR_PALETTES = [
+  { bg: "bg-violet-100 dark:bg-violet-950/50", text: "text-violet-700 dark:text-violet-300", ring: "ring-violet-200/60 dark:ring-violet-800/40" },
+  { bg: "bg-sky-100 dark:bg-sky-950/50", text: "text-sky-700 dark:text-sky-300", ring: "ring-sky-200/60 dark:ring-sky-800/40" },
+  { bg: "bg-emerald-100 dark:bg-emerald-950/50", text: "text-emerald-700 dark:text-emerald-300", ring: "ring-emerald-200/60 dark:ring-emerald-800/40" },
+  { bg: "bg-amber-100 dark:bg-amber-950/50", text: "text-amber-700 dark:text-amber-300", ring: "ring-amber-200/60 dark:ring-amber-800/40" },
+  { bg: "bg-rose-100 dark:bg-rose-950/50", text: "text-rose-700 dark:text-rose-300", ring: "ring-rose-200/60 dark:ring-rose-800/40" },
+  { bg: "bg-teal-100 dark:bg-teal-950/50", text: "text-teal-700 dark:text-teal-300", ring: "ring-teal-200/60 dark:ring-teal-800/40" },
+  { bg: "bg-indigo-100 dark:bg-indigo-950/50", text: "text-indigo-700 dark:text-indigo-300", ring: "ring-indigo-200/60 dark:ring-indigo-800/40" },
+  { bg: "bg-orange-100 dark:bg-orange-950/50", text: "text-orange-700 dark:text-orange-300", ring: "ring-orange-200/60 dark:ring-orange-800/40" },
+];
+
+function getPalette(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
+}
+
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+}
+
+// ── Shift formatter ───────────────────────────────────────────────
+function formatShiftTime(time: string | null | undefined) {
+  if (!time || typeof time !== "string" || !time.includes(":")) return "--";
+  try {
+    const [h, m] = time.split(":");
+    const hour = parseInt(h);
+    if (isNaN(hour)) return "--";
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${m} ${ampm}`;
+  } catch {
+    return "--";
+  }
+}
+
+// ── Department pill ───────────────────────────────────────────────
+function DeptPill({ name }: { name: string | undefined }) {
+  if (!name) return <span className="text-xs text-gray-400">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 ring-1 ring-slate-200/60 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700/40">
+      <Building2 className="h-3 w-3 shrink-0 text-slate-400" />
+      <span className="truncate max-w-[120px]">{name}</span>
+    </span>
+  );
+}
+
+// ── 3-dot action menu ─────────────────────────────────────────────
+function ActionMenu({
+  onEdit,
+  onDelete,
+  hasEdit,
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+  hasEdit: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-400 transition-all hover:border-gray-200 hover:bg-gray-50 hover:text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        title="More actions"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 z-30 w-44 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/40">
+          {hasEdit && (
+            <button
+              onClick={() => { onEdit(); setOpen(false); }}
+              className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
+            >
+              <PencilLine className="h-4 w-4" />
+              Edit Profile
+            </button>
+          )}
+          <div className="mx-3 border-t border-gray-100 dark:border-gray-800" />
+          <button
+            onClick={() => { onDelete(); setOpen(false); }}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Employee
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Skeleton card ─────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div className="animate-pulse overflow-hidden rounded-3xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <div className="p-6 space-y-4">
+        <div className="flex items-start justify-between">
+          <div className="h-16 w-16 rounded-2xl bg-gray-200 dark:bg-gray-700" />
+          <div className="h-7 w-7 rounded-xl bg-gray-100 dark:bg-gray-800" />
+        </div>
+        <div className="space-y-2 pt-1">
+          <div className="h-4 w-32 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="h-3 w-24 rounded-full bg-gray-100 dark:bg-gray-800" />
+        </div>
+        <div className="h-6 w-28 rounded-xl bg-gray-100 dark:bg-gray-800" />
+      </div>
+      <div className="border-t border-gray-100 px-6 py-4 dark:border-gray-800">
+        <div className="h-3 w-36 rounded-full bg-gray-100 dark:bg-gray-800" />
+      </div>
+    </div>
+  );
+}
+
+// ── Employee Card ─────────────────────────────────────────────────
+function EmployeeCard({
+  emp,
+  index,
+  onEdit,
+  onDelete,
+  hasEdit,
+}: {
+  emp: EmployeeResponse;
+  index: number;
+  onEdit: () => void;
+  onDelete: () => void;
+  hasEdit: boolean;
+}) {
+  const palette = getPalette(emp.fullName);
+  const initials = getInitials(emp.fullName);
+  const shiftStr = `${formatShiftTime(emp.shiftStartTime)} – ${formatShiftTime(emp.shiftEndTime)}`;
+
+  return (
+    <div
+      className="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-gray-200/60 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
+      style={{ animationDelay: `${index * 40}ms` }}
+    >
+      {/* Card body */}
+      <div className="flex flex-1 flex-col gap-4 p-6">
+        {/* Top: Avatar + menu */}
+        <div className="flex items-start justify-between">
+          <div
+            className={`flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-black ring-2 ${palette.bg} ${palette.text} ${palette.ring} transition-transform duration-200 group-hover:scale-105`}
+          >
+            {initials}
+          </div>
+          <ActionMenu onEdit={onEdit} onDelete={onDelete} hasEdit={hasEdit} />
+        </div>
+
+        {/* Name + Designation */}
+        <div className="min-w-0 space-y-0.5">
+          <p className="truncate text-base font-black tracking-tight text-gray-900 dark:text-white">
+            {emp.fullName}
+          </p>
+          <p className="truncate text-xs font-semibold text-gray-400 dark:text-gray-500">
+            {emp.designation || "—"}
+          </p>
+          <p className="mt-1 font-mono text-[10px] font-black tracking-wider text-indigo-400/80">
+            {emp.employeeCode}
+          </p>
+        </div>
+
+        {/* Department pill */}
+        <DeptPill name={emp.departmentName} />
+      </div>
+
+      {/* Card footer: shift info */}
+      <div className="flex items-center gap-2 border-t border-gray-100 bg-gray-50/60 px-6 py-3.5 dark:border-gray-800 dark:bg-gray-800/30">
+        <Clock className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+        <span className="min-w-0 truncate font-mono text-[11px] font-bold text-gray-500 dark:text-gray-400">
+          {shiftStr}
+        </span>
+        {emp.shiftName && (
+          <>
+            <span className="text-gray-200 dark:text-gray-700">·</span>
+            <span className="min-w-0 truncate text-[11px] font-medium text-gray-400 dark:text-gray-500">
+              {emp.shiftName}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Empty State ───────────────────────────────────────────────────
+function EmptyState({ hasSearch, onAdd }: { hasSearch: boolean; onAdd: () => void }) {
+  return (
+    <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-200 bg-gray-50/50 py-24 text-center dark:border-gray-800 dark:bg-gray-900/30">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+        <Users className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+      </div>
+      <p className="mt-5 text-lg font-black tracking-tight text-gray-800 dark:text-white">
+        {hasSearch ? "No matching employees" : "No employees yet"}
+      </p>
+      <p className="mt-1.5 max-w-xs text-sm text-gray-500 dark:text-gray-400">
+        {hasSearch
+          ? "Try adjusting your search or clearing the filter."
+          : "Add your first team member to get the directory started."}
+      </p>
+      {!hasSearch && (
+        <button
+          onClick={onAdd}
+          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-indigo-200/50 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-indigo-900/30"
+        >
+          <UserPlus className="h-4 w-4" />
+          Add First Employee
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────
+export default function EmployeeList({
+  onAddEmployee,
+  onEditEmployee,
+  refreshKey,
+}: {
+  onAddEmployee: () => void;
+  onEditEmployee?: (id: number) => void;
+  refreshKey: number;
 }) {
   const { data: employees = [], isLoading, isError, error: queryError, refetch } = useAllEmployees();
   const deleteMutation = useDeleteEmployee();
@@ -26,193 +260,129 @@ export default function EmployeeList({ onAddEmployee, onEditEmployee, refreshKey
   };
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter(emp => 
-      emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (emp.departmentName && emp.departmentName.toLowerCase().includes(searchQuery.toLowerCase()))
+    return employees.filter(
+      (emp) =>
+        emp.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        emp.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (emp.departmentName && emp.departmentName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [employees, searchQuery]);
-
-  const formatShiftTime = (time: string | null | undefined) => {
-    if (!time || typeof time !== 'string' || !time.includes(':')) return "--";
-    try {
-      const [h, m] = time.split(":");
-      const hour = parseInt(h);
-      if (isNaN(hour)) return "--";
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour % 12 || 12;
-      return `${displayHour}:${m} ${ampm}`;
-    } catch {
-      return "--";
-    }
-  };
-
-  if (isLoading) return (
-    <div className="p-20 text-center">
-      <div className="inline-block animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full mb-2"></div>
-      <p className="text-gray-500 text-sm font-medium">Loading directory...</p>
-    </div>
-  );
 
   const errorMessage = isError ? ((queryError as any)?.message || "Failed to load employees.") : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header section with Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-gray-900 dark:text-white text-xl font-bold">Employee Directory</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">Manage all staff members, departments and schedules</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-            <input 
-              type="text"
-              placeholder="Search directory..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm w-full md:w-64 outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition-all shadow-sm"
-            />
+    <div className="mx-auto w-full max-w-7xl overflow-hidden space-y-0 px-4 sm:px-6 md:px-8">
+
+      {/* ═══════════════════════════════════════════════════════════
+          MISSION 1 — HEADER + STICKY SEARCH
+      ═══════════════════════════════════════════════════════════ */}
+      <div className="sticky top-0 z-20 -mx-4 bg-white/90 px-4 pb-4 pt-4 backdrop-blur-md dark:bg-gray-950/90 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">
+        {/* Title row */}
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+                  Team Directory
+                </h1>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {isLoading ? "Loading…" : `${employees.length} ${employees.length === 1 ? "member" : "members"}`}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <button 
-            onClick={onAddEmployee} 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg shadow-sm transition-all active:scale-95 whitespace-nowrap"
+          <button
+            onClick={onAddEmployee}
+            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-indigo-200/50 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-indigo-900/30"
           >
-            Add Employee
+            <UserPlus className="h-4 w-4 shrink-0" />
+            <span>Add Employee</span>
           </button>
         </div>
+
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-400 transition-colors" />
+          <input
+            type="text"
+            placeholder="Search by name, code, or department…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-3.5 pl-11 pr-10 text-sm font-medium text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:placeholder-gray-600 dark:focus:bg-gray-800/80"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="mt-4 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent dark:via-gray-800" />
       </div>
 
+      {/* ── spacer so content doesn't sit under sticky header ── */}
+      <div className="pt-6" />
+
+      {/* Error banner */}
       {errorMessage && (
-        <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center justify-between">
-          <span className="text-red-600 dark:text-red-400 text-sm font-medium">{errorMessage}</span>
-          <button onClick={() => refetch()} className="text-indigo-600 text-sm font-bold hover:underline">Retry</button>
+        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-5 py-4 dark:border-red-900 dark:bg-red-950/20">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
+            <span className="truncate text-sm font-semibold text-red-600 dark:text-red-400">
+              {errorMessage}
+            </span>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="ml-4 shrink-0 rounded-xl bg-white px-3 py-1.5 text-xs font-black text-indigo-600 shadow-sm transition hover:bg-indigo-50 dark:bg-gray-900 dark:hover:bg-indigo-950/30"
+          >
+            Retry
+          </button>
         </div>
       )}
-      
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm">
-        {/* DESKTOP TABLE */}
-        <div className="max-md:hidden overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[10px] tracking-wider">
-                <th className="px-6 py-4 font-bold w-12 text-center">#</th>
-                <th className="px-6 py-4 font-bold">Employee</th>
-                <th className="px-6 py-4 font-bold">Department</th>
-                <th className="px-6 py-4 font-bold text-center">Shift Schedule</th>
-                <th className="px-6 py-4 font-bold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
-              {filteredEmployees.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic">No record matches your search.</td>
-                </tr>
-              ) : (
-                filteredEmployees.map((emp, index) => (
-                  <tr key={emp.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                    <td className="px-6 py-4 font-mono text-[11px] text-gray-400 text-center">{index + 1}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-900 dark:text-white tracking-tight">{emp.fullName}</span>
-                        <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">{emp.employeeCode}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                        <Building2 size={14} className="text-gray-400" />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-xs tracking-tight">{emp.departmentName || "--"}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">{emp.designation}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-[11px] text-gray-600 dark:text-gray-400 font-bold font-mono">
-                          <Clock size={12} className="text-indigo-500" />
-                          {formatShiftTime(emp.shiftStartTime)} - {formatShiftTime(emp.shiftEndTime)}
-                        </div>
-                        <span className="text-[10px] text-gray-400 font-medium mt-1">{emp.shiftName}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
-                        {onEditEmployee && (
-                          <button 
-                            onClick={() => onEditEmployee(emp.id)} 
-                            className="p-1.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-gray-400 hover:text-indigo-600 transition-all shadow-sm active:scale-90"
-                            title="Edit Profile"
-                          >
-                            <PencilLine size={16} />
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => emp.id && setConfirmDelete(emp.id)} 
-                          className="p-1.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-all shadow-sm active:scale-90"
-                          title="Delete Employee"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+
+      {/* ═══════════════════════════════════════════════════════════
+          MISSION 2 — EMPLOYEE CARDS GRID
+      ═══════════════════════════════════════════════════════════ */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
-
-        {/* MOBILE CARDS */}
-        <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filteredEmployees.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-400 italic">No record matches your search.</div>
+            <EmptyState hasSearch={searchQuery.length > 0} onAdd={onAddEmployee} />
           ) : (
-            filteredEmployees.map((emp) => (
-              <div key={emp.id} className="p-5 space-y-4">
-                 <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                       <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-bold text-gray-400">
-                          {emp.fullName.charAt(0)}
-                       </div>
-                       <div>
-                          <h4 className="font-bold text-gray-900 dark:text-white leading-tight">{emp.fullName}</h4>
-                          <p className="text-[10px] font-mono text-indigo-500 font-black tracking-tight">{emp.employeeCode}</p>
-                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                        {onEditEmployee && (
-                          <button onClick={() => onEditEmployee(emp.id)} className="p-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400">
-                             <PencilLine size={16} />
-                          </button>
-                        )}
-                        <button onClick={() => emp.id && setConfirmDelete(emp.id)} className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-500">
-                           <Trash2 size={16} />
-                        </button>
-                    </div>
-                 </div>
-
-                 <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Department</p>
-                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{emp.departmentName || '--'}</p>
-                    </div>
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Shift</p>
-                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                          {formatShiftTime(emp.shiftStartTime)} - {formatShiftTime(emp.shiftEndTime)}
-                       </p>
-                    </div>
-                 </div>
-              </div>
+            filteredEmployees.map((emp, index) => (
+              <EmployeeCard
+                key={emp.id}
+                emp={emp}
+                index={index}
+                onEdit={() => onEditEmployee?.(emp.id)}
+                onDelete={() => emp.id && setConfirmDelete(emp.id)}
+                hasEdit={!!onEditEmployee}
+              />
             ))
           )}
         </div>
-      </div>
+      )}
 
+      {/* ── Results label ── */}
+      {!isLoading && filteredEmployees.length > 0 && searchQuery && (
+        <p className="pt-2 text-center text-xs font-semibold text-gray-400">
+          Showing {filteredEmployees.length} of {employees.length} employees
+        </p>
+      )}
+
+      {/* Confirm delete modal */}
       <ConfirmModal
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
