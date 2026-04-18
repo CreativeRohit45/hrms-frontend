@@ -1,32 +1,23 @@
-/**
- * Utility to provide a synchronized "Server Now" to the frontend.
- * This prevents employees from cheating by changing their local computer clock.
- */
+// src/utils/serverTime.ts
 
-let serverOffsetMs = 0;
+let serverOffset = 0;
 
 /**
- * Initializes the clock sync by calculating the difference between 
- * the local browser time and the official server time.
+ * Initializes the server clock synchronization offset.
+ * Called by AuthContext when system info is fetched.
  */
-export function initServerClock(serverTimeIso: string) {
-  const serverTime = new Date(serverTimeIso).getTime();
+export const initServerClock = (serverTimeStr: string | null | undefined) => {
+  if (!serverTimeStr) return;
+  const serverTime = new Date(serverTimeStr).getTime();
   const localTime = Date.now();
-  serverOffsetMs = serverTime - localTime;
-  console.log(`[Clock Sync] Offset established: ${serverOffsetMs}ms`);
-}
+  serverOffset = serverTime - localTime;
+  console.log(`[TimeSync] Server clock synced. Offset: ${serverOffset}ms`);
+};
 
 /**
  * Returns a Date object representing the current time on the server.
  */
-export function getServerNow(): Date {
-  return new Date(Date.now() + serverOffsetMs);
-}
+export const getServerNow = (): Date => {
+  return new Date(Date.now() + serverOffset);
+};
 
-/**
- * Convenience to get current date string in ISO/local format if needed.
- */
-export function getServerTodayStr(): string {
-  const now = getServerNow();
-  return now.toISOString().split("T")[0];
-}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronRight, Calendar, List } from "lucide-react";
 import { getServerNow } from "../../utils/serverTime";
 import {
   getMyAttendanceLogs,
@@ -15,6 +15,7 @@ import {
   formatMinutes,
   formatTime,
   formatWorkDate,
+  formatLongDate,
   type AttendanceLogResponse,
   type AttendanceStatus,
 } from "../../types/attendance";
@@ -380,7 +381,7 @@ function CorrectionReviewModal({ log, onClose, onSuccess }: CorrectionReviewModa
         <div className="flex items-center justify-between px-6 py-4
           border-b border-gray-200 dark:border-gray-800">
           <div>
-            <p className="text-gray-900 dark:bg-gray-100 font-bold text-base">
+            <p className="text-gray-900 dark:text-gray-100 font-bold text-base">
               Review Regularization Request
             </p>
             <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
@@ -522,6 +523,7 @@ export default function AttendancePage() {
   const [rosterSearchTerm, setRosterSearchTerm] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const lastAutoMonth = useRef("");
 
   const getLocalTodayStr = () => {
     const d = getServerNow();
@@ -575,10 +577,8 @@ export default function AttendancePage() {
   const monthOptions = useMemo(getMonthOptions, []);
   const pickerDays = useMemo(() => generateCalendarGrid(pickerMonth), [pickerMonth]);
 
-  const formatLongDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "numeric", month: "short", year: "numeric",
-    });
+  // Weekly grouping state for mobile
+  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchLogs = useCallback(async () => {
@@ -655,7 +655,6 @@ export default function AttendancePage() {
     }
   };
 
-  // ── Filtered records ───────────────────────────────────────────────────────
   const filtered = useMemo(
     () => logs.filter((log) => {
       const matchesMonth = log.workDate.startsWith(filterMonth);
@@ -664,6 +663,46 @@ export default function AttendancePage() {
     }),
     [logs, filterMonth, statusFilter]
   );
+
+  // ── Weekly Grouping for Mobile ──────────────────────────────────────────────
+  const groupedWeeks = useMemo(() => {
+    if (!filtered || filtered.length === 0) return [];
+
+    // Group records by calendar week (Monday as start)
+    const weeksMap = new Map<string, AttendanceLogResponse[]>();
+
+    filtered.forEach(log => {
+      const date = new Date(log.workDate);
+      const day = date.getDay(); // 0 is Sun, 1 is Mon
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+      const monday = new Date(date);
+      monday.setDate(diff);
+      const weekKey = monday.toISOString().split('T')[0];
+
+      if (!weeksMap.has(weekKey)) weeksMap.set(weekKey, []);
+      weeksMap.get(weekKey)!.push(log);
+    });
+
+    // Convert map to sorted array of weeks
+    const sortedWeekKeys = Array.from(weeksMap.keys()).sort((a, b) => b.localeCompare(a));
+    return sortedWeekKeys.map((key, index) => {
+      const logs = weeksMap.get(key)!.sort((a, b) => b.workDate.localeCompare(a.workDate));
+      return {
+        id: key,
+        label: `Week ${sortedWeekKeys.length - index}`,
+        dateRange: `${formatWorkDate(logs[logs.length - 1].workDate)} - ${formatWorkDate(logs[0].workDate)}`,
+        logs
+      };
+    });
+  }, [filtered]);
+
+  // Default expand the first (latest) week only on month change or first load
+  useEffect(() => {
+    if (groupedWeeks.length > 0 && lastAutoMonth.current !== filterMonth) {
+      setExpandedWeek(groupedWeeks[0].id);
+      lastAutoMonth.current = filterMonth;
+    }
+  }, [groupedWeeks, filterMonth]);
 
   // ── Aggregate stats ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -686,8 +725,8 @@ export default function AttendancePage() {
   const suggestions = useMemo(() => {
     if (!searchInput.trim()) return [];
     const term = searchInput.toLowerCase();
-    return employeeList.filter(e => 
-      e.fullName.toLowerCase().includes(term) || 
+    return employeeList.filter(e =>
+      e.fullName.toLowerCase().includes(term) ||
       e.employeeCode.toLowerCase().includes(term)
     ).slice(0, 8);
   }, [searchInput, employeeList]);
@@ -701,12 +740,13 @@ export default function AttendancePage() {
       if (l.attendanceStatus === "HALF_DAY" && l.punchInTime && l.shiftStartTime) {
         try {
           // Robust parsing: extract YYYY-MM-DD from punchInTime and combine with HH:mm from shiftStartTime
-          const datePart = l.workDate; // workDate is usually YYYY-MM-DD
+          const datePart = l.workDate;
           const [sH, sM] = l.shiftStartTime.split(':');
           const shiftThreshold = new Date(`${datePart}T${sH}:${sM}:00`).getTime() + (10 * 60 * 1000);
-          const punchTime = new Date(l.punchInTime).getTime();
-          return punchTime > shiftThreshold;
-        } catch(e) { return false; }
+          const punchStr = l.punchInTime.includes('T') ? l.punchInTime : l.punchInTime.replace(' ', 'T');
+          const punchTime = new Date(punchStr).getTime();
+          return !isNaN(punchTime) && punchTime > shiftThreshold;
+        } catch (e) { return false; }
       }
       return false;
     }).length;
@@ -854,7 +894,7 @@ export default function AttendancePage() {
                   border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[100] overflow-hidden 
                   backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="p-1.5">
-                    <button 
+                    <button
                       onClick={() => {
                         setActiveEmployeeCode("me");
                         setSearchInput("");
@@ -873,7 +913,7 @@ export default function AttendancePage() {
                     </button>
 
                     {suggestions.map((emp) => (
-                      <button 
+                      <button
                         key={emp.employeeCode}
                         onClick={() => {
                           setActiveEmployeeCode(emp.employeeCode);
@@ -935,7 +975,7 @@ export default function AttendancePage() {
         <StatCard label="Total Hours" value={formatMinutes(stats.totalMin)}
           sub="payable this period" iconBg="bg-indigo-50 dark:bg-indigo-950/40"
           icon={<svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>} />
-        <StatCard label="Overtime"  value={formatMinutes(stats.overtimeMin)}
+        <StatCard label="Overtime" value={formatMinutes(stats.overtimeMin)}
           sub={stats.overtimeMin > 0 ? "extra hours logged" : "none this period"}
           iconBg="bg-violet-50 dark:bg-violet-950/40"
           icon={<svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>} />
@@ -965,8 +1005,8 @@ export default function AttendancePage() {
 
         {/* ── Toolbar (list/calendar) ── */}
         {viewMode !== "roster" && (
-          <div className="flex items-center justify-between gap-3 px-5 py-3.5
-            border-b border-gray-200 dark:border-gray-800 flex-wrap gap-y-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5
+            border-b border-gray-200 dark:border-gray-800">
             <p className="text-gray-700 dark:text-gray-300 text-sm font-semibold">
               Attendance Records
               {!isLoading && (
@@ -975,34 +1015,9 @@ export default function AttendancePage() {
                 </span>
               )}
             </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Feature 3: CSV Export button */}
-              {viewMode === "list" && filtered.length > 0 && (
-                <button
-                  onClick={() => {
-                    exportToCSV(filtered, `attendance_${activeEmployeeCode}_${filterMonth}.csv`);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5
-                    bg-gray-50 dark:bg-gray-800 border border-gray-200
-                    dark:border-gray-700 rounded-lg text-xs font-semibold
-                    text-gray-600 dark:text-gray-400
-                    hover:bg-emerald-50 dark:hover:bg-emerald-950/30
-                    hover:text-emerald-700 dark:hover:text-emerald-400
-                    hover:border-emerald-300 dark:hover:border-emerald-800
-                    transition-all mr-2"
-                  title="Export current view to CSV"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Export CSV
-                </button>
-              )}
-
-              {/* Sub-view toggle (Calendar/List) */}
-              <div className="flex bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700 mr-2">
+            <div className="w-full sm:w-auto mt-3 sm:mt-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              {/* Desktop Sub-view toggle (Calendar/List) - Moved here to align row */}
+              <div className="hidden sm:flex sm:order-3 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700 mr-1">
                 {(["calendar", "list"] as const).map((mode) => (
                   <button
                     key={mode}
@@ -1017,79 +1032,109 @@ export default function AttendancePage() {
                 ))}
               </div>
 
-              {/* Status filter (List only) */}
-              {viewMode === "list" && (
-                <div className="relative">
+              <div className="grid grid-cols-2 sm:contents gap-2 w-full sm:w-auto">
+                {/* Status filter */}
+                {viewMode === "list" && (
+                  <div className="relative w-full sm:w-auto sm:order-2">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="appearance-none w-full bg-gray-50 dark:bg-gray-800
+                        border border-gray-200 dark:border-gray-700 rounded-xl
+                        text-gray-700 dark:text-gray-300 text-[11px] sm:text-xs font-bold
+                        pl-2.5 sm:pl-3 pr-8 sm:pr-10 py-1.5 sm:py-2 outline-none focus:ring-4
+                        focus:ring-indigo-500/10 focus:border-indigo-400
+                        transition-all cursor-pointer min-w-0 sm:min-w-[130px]"
+                    >
+                      <option value="ALL">All Status</option>
+                      {Object.keys(STATUS_CONFIG).map((s) => (
+                        <option key={s} value={s}>{STATUS_CONFIG[s as AttendanceStatus].label}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+
+                {/* Month filter */}
+                <div className="relative w-full sm:w-auto sm:order-4">
                   <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="appearance-none bg-gray-50 dark:bg-gray-800
-                      border border-gray-200 dark:border-gray-700 rounded-lg
-                      text-gray-700 dark:text-gray-300 text-xs font-semibold
-                      pl-3 pr-8 py-1.5 outline-none focus:ring-2
-                      focus:ring-indigo-500/20 focus:border-indigo-400
-                      transition-all cursor-pointer min-w-[110px]"
+                    value={filterMonth}
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    className="appearance-none w-full bg-gray-50 dark:bg-gray-800
+                      border border-gray-200 dark:border-gray-700 rounded-xl
+                      text-gray-700 dark:text-gray-300 text-[11px] sm:text-xs font-bold
+                      pl-2.5 sm:pl-3 pr-8 sm:pr-10 py-1.5 sm:py-2 outline-none focus:ring-4
+                      focus:ring-indigo-500/10 focus:border-indigo-400
+                      transition-all cursor-pointer min-w-0 sm:min-w-[150px]"
                   >
-                    <option value="ALL">All Status</option>
-                    {Object.keys(STATUS_CONFIG).map((s) => (
-                      <option key={s} value={s}>{STATUS_CONFIG[s as AttendanceStatus].label}</option>
+                    {monthOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3
-                    text-gray-400 pointer-events-none" fill="none"
-                    stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <div className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none"
+                      stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-              )}
 
-              {/* Month filter */}
-              <div className="relative">
-                <select
-                  value={filterMonth}
-                  onChange={(e) => setFilterMonth(e.target.value)}
-                  className="appearance-none bg-gray-50 dark:bg-gray-800
-                    border border-gray-200 dark:border-gray-700 rounded-lg
-                    text-gray-700 dark:text-gray-300 text-xs font-semibold
-                    pl-3 pr-8 py-1.5 outline-none focus:ring-2
-                    focus:ring-indigo-500/20 focus:border-indigo-400
-                    transition-all cursor-pointer"
-                >
-                  {monthOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3
-                  text-gray-400 pointer-events-none" fill="none"
-                  stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                {/* Feature 3: CSV Export button (Full width on mobile, auto on desktop) */}
+                {viewMode === "list" && filtered.length > 0 && (
+                  <button
+                    onClick={() => {
+                      exportToCSV(filtered, `attendance_${activeEmployeeCode}_${filterMonth}.csv`);
+                    }}
+                    className="col-span-2 sm:order-1 sm:flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-1.5 sm:py-2
+                      bg-white dark:bg-gray-800 border-2 border-dashed border-gray-200
+                      dark:border-gray-700 rounded-xl text-[11px] sm:text-xs font-bold
+                      text-gray-600 dark:text-gray-400
+                      hover:bg-emerald-50 dark:hover:bg-emerald-950/30
+                      hover:text-emerald-700 dark:hover:text-emerald-400
+                      hover:border-emerald-300 dark:hover:border-emerald-800
+                      transition-all shadow-sm w-full sm:w-auto"
+                    title="Export current view to CSV"
+                  >
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor"
+                      viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                  </button>
+                )}
               </div>
-
             </div>
           </div>
         )}
+
 
         {/* ── ROSTER VIEW ── */}
         {viewMode === "roster" && (
           <div className="p-0">
             {/* Roster toolbar */}
-            <div className="flex items-center justify-between gap-4 px-6 py-5
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5
               border-b border-gray-200 dark:border-gray-800
-              bg-gray-50/30 dark:bg-gray-800/10 flex-wrap gap-y-3">
+              bg-gray-50/30 dark:bg-gray-800/10">
               <div className="flex items-center gap-4 flex-wrap">
                 {/* Date picker button */}
                 <div className="relative">
                   <button
                     onClick={() => setIsRosterPickerOpen(!isRosterPickerOpen)}
-                    className="flex items-center gap-2.5 pl-10 pr-4 py-2
+                    className="flex items-center gap-2.5 pl-10 pr-4 py-2.5
                       bg-white dark:bg-gray-950 border border-gray-200
                       dark:border-gray-800 rounded-xl text-gray-800
                       dark:text-gray-200 text-sm font-bold focus:outline-none
                       focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500
                       hover:border-gray-300 dark:hover:border-gray-700
-                      transition-all shadow-sm min-w-[180px]"
+                      transition-all shadow-sm w-full sm:min-w-[200px]"
                   >
+
                     <div className="absolute inset-y-0 left-0 pl-3.5
                       flex items-center pointer-events-none">
                       <svg className="h-4 w-4 text-gray-400" fill="none"
@@ -1169,35 +1214,35 @@ export default function AttendancePage() {
                     <input type="text" placeholder="Search roster..."
                       value={rosterSearchTerm}
                       onChange={(e) => setRosterSearchTerm(e.target.value)}
-                      className="h-9 w-48 pl-9 pr-4 bg-white dark:bg-gray-800
+                      className="h-10 w-full sm:w-56 pl-10 pr-4 bg-white dark:bg-gray-800
                         border border-gray-200 dark:border-gray-700 rounded-xl
-                        text-xs font-medium focus:outline-none focus:ring-2
-                        focus:ring-indigo-500/20 focus:border-indigo-500
+                        text-sm font-semibold focus:outline-none focus:ring-4
+                        focus:ring-indigo-500/10 focus:border-indigo-500
                         transition-all shadow-sm"
                     />
-                    <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"
+                    <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-indigo-500"
                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
 
-                  <div className="flex bg-gray-100/80 dark:bg-gray-800 p-1 rounded-xl
-                    shadow-inner border border-gray-200/50 dark:border-gray-700/50">
+                  <div className="flex w-full sm:w-auto bg-gray-100/80 dark:bg-gray-800 p-1 rounded-xl
+                    shadow-inner border border-gray-200/50 dark:border-gray-700/50 group">
                     <button onClick={() => {
                       const d = new Date(rosterDate); d.setDate(d.getDate() - 1);
                       setRosterDate(d.toISOString().split("T")[0]);
                     }} title="Previous Day"
-                      className="p-1.5 hover:bg-white dark:hover:bg-gray-700 rounded-lg
+                      className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg
                         text-gray-500 dark:text-gray-400 transition-all
-                        hover:text-indigo-600 shadow-sm hover:shadow active:scale-90">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                        hover:text-indigo-600 shadow-sm hover:shadow active:scale-90 flex-1 sm:flex-none">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
                     </button>
                     <button onClick={() => setRosterDate(todayStr)}
-                      className="px-4 py-1.5 text-[11px] font-black uppercase tracking-widest
+                      className="px-6 py-2 text-[10px] font-black uppercase tracking-widest
                         text-gray-500 dark:text-gray-400 hover:text-indigo-600
-                        dark:hover:text-indigo-400 transition-colors flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${rosterDate === todayStr ? "bg-indigo-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
+                        dark:hover:text-indigo-400 transition-colors flex items-center justify-center gap-2 flex-[2] sm:flex-none">
+                      <span className={`w-2 h-2 rounded-full ${rosterDate === todayStr ? "bg-indigo-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
                       {rosterDate === todayStr ? "Today" : "Go to Today"}
                     </button>
                     <button onClick={() => {
@@ -1205,11 +1250,11 @@ export default function AttendancePage() {
                       const dStr = d.toISOString().split("T")[0];
                       if (dStr <= todayStr) setRosterDate(dStr);
                     }} disabled={rosterDate >= todayStr} title="Next Day"
-                      className="p-1.5 hover:bg-white dark:hover:bg-gray-700 rounded-lg
+                      className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg
                         text-gray-500 dark:text-gray-400 transition-all hover:text-indigo-600
                         shadow-sm hover:shadow active:scale-90
-                        disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-500">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
+                        disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-500 flex-1 sm:flex-none">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
                     </button>
                   </div>
                 </div>
@@ -1258,8 +1303,8 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            {/* Roster table */}
-            <div className="overflow-x-auto">
+            {/* Desktop Roster table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-800
@@ -1367,265 +1412,507 @@ export default function AttendancePage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Roster Cards */}
+            <div className="flex flex-col gap-4 md:hidden px-4 pb-8 mt-4">
+              {!isLoading && filteredDailyLogs.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50/50 dark:bg-gray-800/10 rounded-[2rem] border border-dashed border-gray-200 dark:border-gray-800">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">
+                    No punches recorded on this day.
+                  </p>
+                </div>
+              )}
+              {!isLoading && filteredDailyLogs.map((log) => {
+                const sc = STATUS_CONFIG[log.attendanceStatus];
+                return (
+                  <div key={log.id} className="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-[2rem] p-5 shadow-sm active:scale-[0.98] transition-all">
+                    <div className="flex justify-between items-start mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-600 font-black text-xs">
+                          {log.fullName.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-gray-900 dark:text-white leading-tight">{log.fullName}</p>
+                          <p className="text-[10px] font-mono font-bold text-gray-400 mt-0.5">{log.employeeCode}</p>
+                        </div>
+                      </div>
+                      <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest rounded-full px-3 py-1 ${sc.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                        {sc.label}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100/50 dark:border-gray-800/50">
+                      <div>
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Punch In</p>
+                        <p className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                          {formatTime(log.punchInTime)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Punch Out</p>
+                        <p className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                          {log.punchOutTime ? formatTime(log.punchOutTime) : <LiveSessionTimer startTime={log.punchInTime!} />}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-4 px-1">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Payable</p>
+                          <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                            {formatMinutes(log.calculatedPayableMinutes)}
+                          </p>
+                        </div>
+                        {log.overtime && log.overtimeMinutes > 0 && (
+                          <div>
+                            <p className="text-[9px] font-black text-violet-400 uppercase tracking-widest mb-0.5">Overtime</p>
+                            <p className="text-xs font-black text-violet-600 dark:text-violet-400">
+                              +{formatMinutes(log.overtimeMinutes)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {isManager && (
+                        <div className="flex gap-2">
+                          {log.correctionStatus === "PENDING" && (
+                            <button onClick={() => setReviewTarget(log)} className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
+                          )}
+                          {log.overtime && log.overtimeMinutes > 0 && !log.isOvertimeApproved && (
+                            <button onClick={() => setOtApproveTarget(log)} className="p-2 bg-violet-600 text-white rounded-xl shadow-lg shadow-violet-200 dark:shadow-violet-900/30">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* ── LIST VIEW ── */}
-        {viewMode === "list" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800
+        {(viewMode === "list" || viewMode === "calendar") && (
+          <>
+            {/* Desktop List View Table */}
+            <div className={`hidden md:${viewMode === 'calendar' ? 'hidden' : 'block'} overflow-x-auto`}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-800
                   bg-gray-50/70 dark:bg-gray-900/70">
-                  {["Date", "Punch In", "Punch Out", "Total Hours",
-                    "Overtime", "Status",
-                    ...(isManager ? ["Actions"] : []),
-                    ""].map((col) => (
-                      <th key={col} className="text-left px-5 py-3 text-xs font-semibold
+                    {["Date", "Punch In", "Punch Out", "Total Hours",
+                      "Overtime", "Status",
+                      ...(isManager ? ["Actions"] : [""])].map((col) => (
+                        <th key={col} className="text-left px-5 py-3 text-xs font-semibold
                       text-gray-500 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                        {col}
-                      </th>
-                    ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {isLoading && [...Array(8)].map((_, i) => <SkeletonRow key={i} />)}
-                {!isLoading && !error && filtered.length === 0 && (
-                  <tr><td colSpan={8}>
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800
+                          {col}
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {isLoading && [...Array(8)].map((_, i) => <SkeletonRow key={i} />)}
+                  {!isLoading && !error && filtered.length === 0 && (
+                    <tr><td colSpan={8}>
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800
                         border border-gray-200 dark:border-gray-700 flex items-center
                         justify-center mb-3">
-                        <svg className="w-5 h-5 text-gray-300 dark:text-gray-600" fill="none"
-                          stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
+                          <svg className="w-5 h-5 text-gray-300 dark:text-gray-600" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                        </div>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">No records found</p>
+                        <p className="text-gray-400 dark:text-gray-600 text-xs mt-1">No attendance data for this period</p>
                       </div>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">No records found</p>
-                      <p className="text-gray-400 dark:text-gray-600 text-xs mt-1">No attendance data for this period</p>
-                    </div>
-                  </td></tr>
-                )}
-                {!isLoading && filtered.map((log) => {
-                  const sc = STATUS_CONFIG[log.attendanceStatus];
-                  const isToday = log.workDate === todayStr;
+                    </td></tr>
+                  )}
+                  {!isLoading && filtered.map((log) => {
+                    const sc = STATUS_CONFIG[log.attendanceStatus];
+                    const isToday = log.workDate === todayStr;
 
-                  // Can the employee request a correction?
-                  // Only if: session is complete, and no PENDING correction exists
-                  const canRequestCorrection =
-                    log.correctionStatus !== "PENDING" &&
-                    (isManager || log.correctionStatus === "NONE" || log.correctionStatus === "REJECTED");
+                    // Can the employee request a correction?
+                    // Only if: session is complete, and no PENDING correction exists
+                    const canRequestCorrection =
+                      log.correctionStatus !== "PENDING" &&
+                      (isManager || log.correctionStatus === "NONE" || log.correctionStatus === "REJECTED");
 
-                  return (
-                    <tr key={log.id}
-                      className={`group transition-colors duration-100
+                    return (
+                      <tr key={log.id}
+                        className={`group transition-colors duration-100
                         hover:bg-gray-50 dark:hover:bg-gray-800/50
                         ${isToday ? "bg-indigo-50/40 dark:bg-indigo-950/20" : ""}`}>
 
-                      {/* Date */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          {isToday && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />}
-                          <div>
-                            <p className={`text-sm font-medium flex items-center gap-1.5
+                        {/* Date */}
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            {isToday && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />}
+                            <div>
+                              <p className={`text-sm font-medium flex items-center gap-1.5
                               ${isToday ? "text-indigo-700 dark:text-indigo-300" : "text-gray-800 dark:text-gray-200"}`}>
-                              {formatWorkDate(log.workDate)}
-                              {isToday && (
-                                <>
-                                  <span className="text-gray-300 dark:text-gray-600 font-normal">•</span>
-                                  <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold uppercase tracking-wider">Today</span>
-                                </>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Punch In */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
-                            {formatTime(log.punchInTime)}
-                          </span>
-                          {log.punchInTime && (
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0
-                              ${log.locationVerifiedIn ? "bg-emerald-400" : "bg-red-400"}`}
-                              title={log.locationVerifiedIn ? "Location verified" : "Location not verified"} />
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Punch Out */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                            {log.punchOutTime ? (
-                              <>
-                                {formatTime(log.punchOutTime)}
-                                {log.punchInTime && log.punchOutTime.substring(0, 10) !== log.punchInTime.substring(0, 10) && (
-                                  <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 py-0.5 px-1.5 bg-indigo-50 dark:bg-indigo-950/40 rounded border border-indigo-100 dark:border-indigo-800 tracking-tighter" title="Punched out on the next day">
-                                    +1 DAY
-                                  </span>
+                                {formatWorkDate(log.workDate)}
+                                {isToday && (
+                                  <>
+                                    <span className="text-gray-300 dark:text-gray-600 font-normal">•</span>
+                                    <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold uppercase tracking-wider">Today</span>
+                                  </>
                                 )}
-                              </>
-                            ) : (
-                               <LiveSessionTimer startTime={log.punchInTime!} />
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Punch In */}
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                              {formatTime(log.punchInTime)}
+                            </span>
+                            {log.punchInTime && (
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0
+                              ${log.locationVerifiedIn ? "bg-emerald-400" : "bg-red-400"}`}
+                                title={log.locationVerifiedIn ? "Location verified" : "Location not verified"} />
                             )}
-                          </span>
-                          {log.punchOutTime && log.locationVerifiedOut !== null && (
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0
+                          </div>
+                        </td>
+
+                        {/* Punch Out */}
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                              {log.punchOutTime ? (
+                                <>
+                                  {formatTime(log.punchOutTime)}
+                                  {log.punchInTime && log.punchOutTime.substring(0, 10) !== log.punchInTime.substring(0, 10) && (
+                                    <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 py-0.5 px-1.5 bg-indigo-50 dark:bg-indigo-950/40 rounded border border-indigo-100 dark:border-indigo-800 tracking-tighter" title="Punched out on the next day">
+                                      +1 DAY
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <LiveSessionTimer startTime={log.punchInTime!} />
+                              )}
+                            </span>
+                            {log.punchOutTime && log.locationVerifiedOut !== null && (
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0
                               ${log.locationVerifiedOut ? "bg-emerald-400" : "bg-red-400"}`}
-                              title={log.locationVerifiedOut ? "Location verified" : "Location not verified"} />
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Total Hours */}
-                      <td className="px-5 py-3.5">
-                        <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
-                          {formatMinutes(log.calculatedPayableMinutes)}
-                        </span>
-                      </td>
-
-                      {/* Overtime */}
-                      <td className="px-5 py-3.5">
-                        {log.overtime && log.overtimeMinutes > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-violet-600 dark:text-violet-400 text-xs font-semibold font-mono">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                            {formatMinutes(log.overtimeMinutes)}
-                            {log.isOvertimeApproved === true && (
-                              <span className="text-emerald-500" title="Approved">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                              </span>
+                                title={log.locationVerifiedOut ? "Location verified" : "Location not verified"} />
                             )}
-                            {log.isOvertimeApproved === false && (
-                              <span className="text-[10px] text-amber-400 font-bold">Pending</span>
-                            )}
+                          </div>
+                        </td>
+
+                        {/* Total Hours */}
+                        <td className="px-5 py-3.5">
+                          <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                            {formatMinutes(log.calculatedPayableMinutes)}
                           </span>
-                        ) : (
-                          <span className="text-gray-300 dark:text-gray-700 text-sm">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Status */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-1 ${sc.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
-                            {sc.label}
+                        {/* Overtime */}
+                        <td className="px-5 py-3.5">
+                          {log.overtime && log.overtimeMinutes > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-violet-600 dark:text-violet-400 text-xs font-semibold font-mono">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                              {formatMinutes(log.overtimeMinutes)}
+                              {log.isOvertimeApproved === true && (
+                                <span className="text-emerald-500" title="Approved">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                </span>
+                              )}
+                              {log.isOvertimeApproved === false && (
+                                <span className="text-[10px] text-amber-400 font-bold">Pending</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-700 text-sm">—</span>
+                          )}
+                        </td>
 
-                            {/* Integrated Regularized Indicator */}
-                            {log.correctionStatus === "APPROVED" && (
-                              <span className="ml-0.5 text-emerald-500" title="Regularized Attendance">
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        {/* Status */}
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-1 ${sc.badge}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`} />
+                              {sc.label}
+
+                              {/* Integrated Regularized Indicator */}
+                              {log.correctionStatus === "APPROVED" && (
+                                <span className="ml-0.5 text-emerald-500" title="Regularized Attendance">
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                              )}
+                            </span>
+
+                            {log.correctionStatus === "REJECTED" && (
+                              <span title={`Rejected: ${log.correctionReason}`} className="text-red-500">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                                 </svg>
                               </span>
                             )}
-                          </span>
+                          </div>
+                        </td>
 
-                          {log.correctionStatus === "REJECTED" && (
-                            <span title={`Rejected: ${log.correctionReason}`} className="text-red-500">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                              </svg>
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Management Actions */}
-                      {isManager && (
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2">
-                            {log.correctionStatus === "PENDING" && (
+                        {/* Management Actions */}
+                        {isManager && (
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2">
+                              {/* Manual Regularization for Admins */}
                               <button
-                                onClick={() => setReviewTarget(log)}
+                                onClick={() => setCorrectionTarget(log)}
                                 className="flex items-center gap-1.5 px-2.5 py-1.5
+                                bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300
+                                hover:text-indigo-600 dark:hover:text-indigo-400
+                                text-[11px] font-bold rounded-lg border border-gray-200
+                                dark:border-gray-700 transition-all active:scale-95"
+                                title="Manual Regularization"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Regularize
+                              </button>
+
+                              {log.correctionStatus === "PENDING" && (
+                                <button
+                                  onClick={() => setReviewTarget(log)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5
                                   bg-indigo-600 hover:bg-indigo-700 text-white
                                   text-[11px] font-bold rounded-lg shadow-sm
                                   shadow-indigo-200 dark:shadow-indigo-900/40 transition-all
                                   animate-pulse hover:animate-none"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Review
-                              </button>
-                            )}
-                            {log.overtime && log.overtimeMinutes > 0 && !log.isOvertimeApproved && (
-                              <button
-                                onClick={() => setOtApproveTarget(log)}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  Review
+                                </button>
+                              )}
+                              {log.overtime && log.overtimeMinutes > 0 && !log.isOvertimeApproved && (
+                                <button
+                                  onClick={() => setOtApproveTarget(log)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5
                                   bg-violet-600 hover:bg-violet-700 text-white
                                   text-[11px] font-bold rounded-lg shadow-sm
                                   shadow-violet-200 dark:shadow-violet-900/40 transition-all active:scale-95"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                                Approve OT
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      )}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                  </svg>
+                                  Approve OT
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
 
-                       {/* Feature 1: Request Correction button */}
-                      <td className="px-5 py-3.5">
-                        {canRequestCorrection && (
-                          (() => {
-                            const isLocked = payrollLockDate && log.workDate <= payrollLockDate;
-                            if (isLocked) {
-                              return (
-                                <span className="text-[10px] text-gray-400 italic flex items-center gap-1" title="Locked for Payroll">
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                  Locked
+                        {/* Feature 1: Request Correction button (Employee only) */}
+                        {!isManager && (
+                          <td className="px-5 py-3.5">
+                            {canRequestCorrection && (
+                              (() => {
+                                const isLocked = payrollLockDate && log.workDate <= payrollLockDate;
+                                if (isLocked) {
+                                  return (
+                                    <span className="text-[10px] text-gray-400 italic flex items-center gap-1" title="Locked for Payroll">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                      Locked
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => setCorrectionTarget(log)}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5
+                                    text-[11px] font-semibold rounded-lg
+                                    text-gray-500 dark:text-gray-400
+                                    bg-gray-50 dark:bg-gray-800
+                                    border border-gray-200 dark:border-gray-700
+                                    hover:bg-indigo-50 dark:hover:bg-indigo-950/40
+                                    hover:text-indigo-600 dark:hover:text-indigo-400
+                                    hover:border-indigo-300 dark:hover:border-indigo-800
+                                    transition-all whitespace-nowrap"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    {log.correctionStatus === "APPROVED" ? "Update Record" : log.correctionStatus === "REJECTED" ? "Re-regularize" : "Regularize"}
+                                  </button>
+                                );
+                              })()
+                            )}
+                            {log.correctionStatus === "PENDING" && (
+                              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Under Review
+                              </span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Attendance Cards (Used for List & Calendar fallback on mobile) */}
+            {/* Mobile Attendance Cards with Weekly Accordions */}
+            <div className="flex flex-col gap-3 md:hidden px-4 pb-8 mt-4">
+              {!isLoading && !error && filtered.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50/50 dark:bg-gray-800/10 rounded-[2rem] border border-dashed border-gray-200 dark:border-gray-800">
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm font-semibold">No attendance records found.</p>
+                </div>
+              )}
+
+              {!isLoading && groupedWeeks.map((week) => {
+                const isOpen = expandedWeek === week.id;
+
+                return (
+                  <div key={week.id} className="overflow-hidden bg-gray-50/50 dark:bg-gray-800/20 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    {/* Week Header */}
+                    <button
+                      onClick={() => setExpandedWeek(isOpen ? null : week.id)}
+                      className="w-full h-14 px-6 flex items-center justify-between transition-colors hover:bg-white dark:hover:bg-gray-900"
+                    >
+                      <div className="flex flex-col items-start text-left">
+                        <p className="text-[10px] font-black uppercase text-indigo-500 dark:text-indigo-400 tracking-widest">{week.label}</p>
+                        <p className="text-[11px] font-bold text-gray-500">{week.dateRange}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] font-black bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-500">
+                          {week.logs.length}
+                        </span>
+                        {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                      </div>
+                    </button>
+
+                    {/* Week Content */}
+                    <div className={`transition-all duration-300 ease-in-out ${isOpen ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}>
+                      <div className="flex flex-col gap-3 p-3 pt-0">
+                        {week.logs.map((log) => {
+                          const sc = STATUS_CONFIG[log.attendanceStatus];
+                          const isToday = log.workDate === todayStr;
+                          const canRequestCorrection =
+                            log.correctionStatus !== "PENDING" &&
+                            (isManager || log.correctionStatus === "NONE" || log.correctionStatus === "REJECTED");
+
+                          return (
+                            <div key={log.id} className={`bg-white dark:bg-gray-950 border rounded-[2rem] p-5 shadow-sm active:scale-[0.98] transition-all
+                            ${isToday ? "border-indigo-200 dark:border-indigo-800/50" : "border-gray-100 dark:border-gray-800"}`}>
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Work Date</p>
+                                    {isToday && <span className="text-[8px] px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded font-black uppercase tracking-tighter">Today</span>}
+                                  </div>
+                                  <p className="text-xs font-bold text-gray-900 dark:text-white">{formatWorkDate(log.workDate)}</p>
+                                </div>
+                                <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest rounded-full px-2.5 py-1 ${sc.badge}`}>
+                                  <span className={`w-1 h-1 rounded-full ${sc.dot}`} />
+                                  {sc.label}
                                 </span>
-                              );
-                            }
-                            return (
-                              <button
-                                onClick={() => setCorrectionTarget(log)}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5
-                                  text-[11px] font-semibold rounded-lg
-                                  text-gray-500 dark:text-gray-400
-                                  bg-gray-50 dark:bg-gray-800
-                                  border border-gray-200 dark:border-gray-700
-                                  hover:bg-indigo-50 dark:hover:bg-indigo-950/40
-                                  hover:text-indigo-600 dark:hover:text-indigo-400
-                                  hover:border-indigo-300 dark:hover:border-indigo-800
-                                  transition-all whitespace-nowrap"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                                {log.correctionStatus === "APPROVED" ? "Update Record" : log.correctionStatus === "REJECTED" ? "Re-regularize" : "Regularize"}
-                              </button>
-                            );
-                          })()
-                        )}
-                        {log.correctionStatus === "PENDING" && !isManager && (
-                          <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Under Review
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 border border-gray-100/50 dark:border-gray-800/50">
+                                <div>
+                                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">In</p>
+                                  <div className="flex items-center gap-1">
+                                    <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                      {formatTime(log.punchInTime)}
+                                    </p>
+                                    {log.punchInTime && <span className={`w-1 h-1 rounded-full ${log.locationVerifiedIn ? "bg-emerald-400" : "bg-red-400"}`} />}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Out</p>
+                                  <div className="flex items-center gap-1">
+                                    <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                      {log.punchOutTime ? formatTime(log.punchOutTime) : <LiveSessionTimer startTime={log.punchInTime!} />}
+                                    </p>
+                                    {log.punchOutTime && log.locationVerifiedOut !== null && <span className={`w-1 h-1 rounded-full ${log.locationVerifiedOut ? "bg-emerald-400" : "bg-red-400"}`} />}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-4 px-1">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex flex-col">
+                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Hours</p>
+                                    <p className="text-xs font-black text-gray-900 dark:text-white">{formatMinutes(log.calculatedPayableMinutes)}</p>
+                                  </div>
+                                  {log.overtime && log.overtimeMinutes > 0 && (
+                                    <div className="flex flex-col">
+                                      <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">OT</p>
+                                      <p className="text-[10px] font-black text-violet-600 dark:text-violet-400">+{formatMinutes(log.overtimeMinutes)}</p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {isManager ? (
+                                    <div className="flex gap-1.5">
+                                      <button onClick={() => setCorrectionTarget(log)} className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm" title="Regularize">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                      </button>
+                                      {log.correctionStatus === "PENDING" && (
+                                        <button onClick={() => setReviewTarget(log)} className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30">
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </button>
+                                      )}
+                                      {log.overtime && log.overtimeMinutes > 0 && !log.isOvertimeApproved && (
+                                        <button onClick={() => setOtApproveTarget(log)} className="p-2 bg-violet-600 text-white rounded-xl shadow-lg shadow-violet-200 dark:shadow-violet-900/30">
+                                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {log.correctionStatus === "PENDING" && (
+                                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-900/50">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                          Review
+                                        </span>
+                                      )}
+                                      {!isManager && canRequestCorrection && (
+                                        <button onClick={() => setCorrectionTarget(log)} className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200 dark:border-gray-700 hover:text-indigo-600 transition-all font-bold text-[10px]">
+                                          Regularize
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
-        {/* ── CALENDAR VIEW (unchanged logic, same as before) ── */}
+        {/* ── CALENDAR VIEW ── */}
         {viewMode === "calendar" && (
-          <div className="p-5">
+          <div className="hidden md:block p-5">
             <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-800
               border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (

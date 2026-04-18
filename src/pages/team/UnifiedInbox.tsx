@@ -38,8 +38,11 @@ export default function UnifiedInbox() {
         api.get("/api/v1/attendance/pending-corrections"),
       ]);
 
+      const leavesData = leaves.data || [];
+      const gatepassesData = gatepasses.data || [];
+
       const normalized: UnifiedRequest[] = [
-        ...leaves.data.map((l: any) => ({
+        ...leavesData.map((l: any) => ({
           id: l.id,
           type: "LEAVE",
           employeeName: l.fullName,
@@ -49,7 +52,7 @@ export default function UnifiedInbox() {
           status: "PENDING",
           metadata: l
         })),
-        ...gatepasses.data.map((g: any) => ({
+        ...gatepassesData.map((g: any) => ({
           id: g.id,
           type: "GATEPASS",
           employeeName: g.fullName,

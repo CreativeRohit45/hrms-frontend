@@ -38,6 +38,8 @@ apiClient.interceptors.response.use(
     const isLoginRequest = error.config?.url?.includes("/auth/login");
     if (error.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem("token");
+      sessionStorage.clear();
       window.location.href = "/login?expired=true";
     }
     return Promise.reject(error);

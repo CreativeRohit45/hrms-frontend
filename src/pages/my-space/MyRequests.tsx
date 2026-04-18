@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { 
-  Plus, Calendar, Clock, MapPin, 
-  ArrowRight, CheckCircle2, XCircle, 
+import {
+  Plus, Calendar, Clock, MapPin,
+  ArrowRight, CheckCircle2, XCircle,
   ArrowUpRight, Palmtree, Ticket,
   AlertCircle, ChevronRight, X, ChevronDown,
   ArrowDownCircle
@@ -35,8 +35,11 @@ export default function MyRequests() {
         api.get("/api/v1/gatepasses/my")
       ]);
 
+      const leavesData = leaves.data || [];
+      const gatepassesData = gatepasses.data || [];
+
       const normalized: Request[] = [
-        ...leaves.data.map((l: any) => ({
+        ...leavesData.map((l: any) => ({
           id: l.id,
           type: "LEAVE",
           details: `${l.leaveTypeName}: ${l.startDate} to ${l.endDate}`,
@@ -44,7 +47,7 @@ export default function MyRequests() {
           timestamp: l.createdAt || new Date().toISOString(),
           metadata: l
         })),
-        ...gatepasses.data.map((g: any) => ({
+        ...gatepassesData.map((g: any) => ({
           id: g.id,
           type: "GATEPASS",
           details: `${g.gatepassType}: ${new Date(g.requestedOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} transit`,
@@ -88,16 +91,16 @@ export default function MyRequests() {
       {/* 🟢 TOP-LEVEL MODAL PORTAL (Relocated for stacking assurance) */}
       <div className="relative z-[1000]">
         {showLeaveModal && (
-          <LeaveApplyModal 
-            onClose={() => setShowLeaveModal(false)} 
-            onSuccess={() => { setShowLeaveModal(false); fetchMyRequests(); }} 
+          <LeaveApplyModal
+            onClose={() => setShowLeaveModal(false)}
+            onSuccess={() => { setShowLeaveModal(false); fetchMyRequests(); }}
           />
         )}
-        
+
         {showGatepassModal && (
-          <GatepassApplyModal 
-            onClose={() => setShowGatepassModal(false)} 
-            onSuccess={() => { setShowGatepassModal(false); fetchMyRequests(); }} 
+          <GatepassApplyModal
+            onClose={() => setShowGatepassModal(false)}
+            onSuccess={() => { setShowGatepassModal(false); fetchMyRequests(); }}
           />
         )}
       </div>
@@ -110,16 +113,16 @@ export default function MyRequests() {
             <h1 className="text-4xl font-black tracking-tight">My Requests Hub</h1>
             <p className="max-w-md text-indigo-100/80">Track your leaves and gatepass requests in real-time. Apply for new exemptions using the quick-actions below.</p>
           </div>
-          
+
           <div className="flex gap-4">
-             <div className="rounded-3xl bg-white/10 p-4 backdrop-blur-md border border-white/10">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Active Leaves</p>
-                <p className="mt-1 text-2xl font-black">{requests.filter(r => r.type === 'LEAVE' && r.status === 'APPROVED').length}</p>
-             </div>
-             <div className="rounded-3xl bg-white/10 p-4 backdrop-blur-md border border-white/10">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Pending</p>
-                <p className="mt-1 text-2xl font-black">{requests.filter(r => r.status === 'PENDING').length}</p>
-             </div>
+            <div className="rounded-3xl bg-white/10 p-4 backdrop-blur-md border border-white/10">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Active Leaves</p>
+              <p className="mt-1 text-2xl font-black">{requests.filter(r => r.type === 'LEAVE' && r.status === 'APPROVED').length}</p>
+            </div>
+            <div className="rounded-3xl bg-white/10 p-4 backdrop-blur-md border border-white/10">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Pending</p>
+              <p className="mt-1 text-2xl font-black">{requests.filter(r => r.status === 'PENDING').length}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -127,7 +130,7 @@ export default function MyRequests() {
       {/* QUICK ACTIONS - Using Button elements for standard event handling */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* LEAVE CARD */}
-        <button 
+        <button
           onClick={handleOpenLeave}
           className="group relative flex w-full flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white text-left transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 active:scale-[0.98] dark:border-gray-800 dark:bg-gray-900"
         >
@@ -148,7 +151,7 @@ export default function MyRequests() {
         </button>
 
         {/* GATEPASS CARD */}
-        <button 
+        <button
           onClick={handleOpenGatepass}
           className="group relative flex w-full flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white text-left transition-all hover:border-orange-200 hover:shadow-2xl hover:shadow-orange-500/10 active:scale-[0.98] dark:border-gray-800 dark:bg-gray-900"
         >
@@ -192,13 +195,12 @@ export default function MyRequests() {
         ) : (
           <div className="space-y-3">
             {requests.map((req) => (
-              <div 
+              <div
                 key={`${req.type}-${req.id}`}
                 className="group flex flex-col gap-4 rounded-[2rem] border border-gray-100 bg-white p-5 transition-all hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-500/5 md:flex-row md:items-center dark:border-gray-800 dark:bg-gray-900"
               >
-                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                  req.type === 'LEAVE' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30' : 'bg-orange-50 text-orange-600 dark:bg-orange-950/30'
-                }`}>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${req.type === 'LEAVE' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30' : 'bg-orange-50 text-orange-600 dark:bg-orange-950/30'
+                  }`}>
                   {req.type === 'LEAVE' ? <Palmtree className="h-6 w-6 pointer-events-none" /> : <Ticket className="h-6 w-6 pointer-events-none" />}
                 </div>
 
@@ -259,9 +261,9 @@ function LeaveApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Leave Type</label>
             <div className="relative">
-              <select 
+              <select
                 value={form.leaveTypeId}
-                onChange={e => setForm({...form, leaveTypeId: Number(e.target.value)})}
+                onChange={e => setForm({ ...form, leaveTypeId: Number(e.target.value) })}
                 className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
               >
                 {types.map(t => <option key={t.id} value={t.id} className="dark:bg-gray-900">{t.name}</option>)}
@@ -274,21 +276,21 @@ function LeaveApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Start Date</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               required
               value={form.startDate}
-              onChange={e => setForm({...form, startDate: e.target.value})}
+              onChange={e => setForm({ ...form, startDate: e.target.value })}
               className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">End Date</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               required
               value={form.endDate}
-              onChange={e => setForm({...form, endDate: e.target.value})}
+              onChange={e => setForm({ ...form, endDate: e.target.value })}
               className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             />
           </div>
@@ -296,11 +298,11 @@ function LeaveApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Reason</label>
-          <textarea 
+          <textarea
             required
             rows={3}
             value={form.reason}
-            onChange={e => setForm({...form, reason: e.target.value})}
+            onChange={e => setForm({ ...form, reason: e.target.value })}
             className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-medium outline-none focus:border-indigo-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             placeholder="Brief details about your leave..."
           />
@@ -308,8 +310,8 @@ function LeaveApplyModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={onClose} className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Discard</button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="rounded-2xl bg-indigo-600 px-8 py-3 text-sm font-black text-white shadow-xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
           >
@@ -347,19 +349,17 @@ function GatepassApplyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
         <div className="grid grid-cols-2 gap-4">
           <button
             type="button"
-            onClick={() => setForm({...form, gatepassType: "OFFICIAL"})}
-            className={`rounded-2xl border-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-              form.gatepassType === "OFFICIAL" ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800"
-            }`}
+            onClick={() => setForm({ ...form, gatepassType: "OFFICIAL" })}
+            className={`rounded-2xl border-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${form.gatepassType === "OFFICIAL" ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800"
+              }`}
           >
             Official
           </button>
           <button
             type="button"
-            onClick={() => setForm({...form, gatepassType: "PERSONAL"})}
-            className={`rounded-2xl border-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
-              form.gatepassType === "PERSONAL" ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900"
-            }`}
+            onClick={() => setForm({ ...form, gatepassType: "PERSONAL" })}
+            className={`rounded-2xl border-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${form.gatepassType === "PERSONAL" ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "border-gray-100 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900"
+              }`}
           >
             Personal
           </button>
@@ -368,21 +368,21 @@ function GatepassApplyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Exit Time</label>
-            <input 
-              type="datetime-local" 
+            <input
+              type="datetime-local"
               required
               value={form.requestedOutTime}
-              onChange={e => setForm({...form, requestedOutTime: e.target.value})}
+              onChange={e => setForm({ ...form, requestedOutTime: e.target.value })}
               className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-orange-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Return Time</label>
-            <input 
-              type="datetime-local" 
+            <input
+              type="datetime-local"
               required
               value={form.requestedInTime}
-              onChange={e => setForm({...form, requestedInTime: e.target.value})}
+              onChange={e => setForm({ ...form, requestedInTime: e.target.value })}
               className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold outline-none focus:border-orange-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             />
           </div>
@@ -390,11 +390,11 @@ function GatepassApplyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
 
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Reason</label>
-          <textarea 
+          <textarea
             required
             rows={2}
             value={form.reason}
-            onChange={e => setForm({...form, reason: e.target.value})}
+            onChange={e => setForm({ ...form, reason: e.target.value })}
             className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-medium outline-none focus:border-orange-500 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             placeholder="Details about your transit..."
           />
@@ -402,8 +402,8 @@ function GatepassApplyModal({ onClose, onSuccess }: { onClose: () => void; onSuc
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={onClose} className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">Discard</button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="rounded-2xl bg-orange-600 px-8 py-3 text-sm font-black text-white shadow-xl shadow-orange-600/20 transition-all hover:bg-orange-700 active:scale-95 disabled:opacity-50"
           >
