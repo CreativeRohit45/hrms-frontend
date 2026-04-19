@@ -17,13 +17,14 @@ import {
   updateMyProfile,
 } from '../../api/employees';
 import type { EmployeeResponse, EmployeeCreateRequest, EmployeeUpdateRequest } from '../../types/employee';
+import type { PageResponse } from '../../types/common';
 
 // ── Queries ──────────────────────────────────────────────────────
 
-export function useAllEmployees() {
-  return useQuery<EmployeeResponse[]>({
-    queryKey: queryKeys.employees.all(),
-    queryFn: getEmployees,
+export function useAllEmployees(page = 0, size = 50) {
+  return useQuery<PageResponse<EmployeeResponse>>({
+    queryKey: [...queryKeys.employees.all(), page, size],
+    queryFn: () => getEmployees(page, size),
   });
 }
 

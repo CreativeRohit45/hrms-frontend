@@ -29,7 +29,7 @@ import {
   useAttendanceDashboardStats,
   useRequestCorrection,
   useApproveCorrection,
-  useRejectCorrectionMutation,
+  useRejectCorrection,
   useApproveOvertimeMutation,
 } from "../../hooks/queries/useAttendance";
 
@@ -201,7 +201,7 @@ function CorrectionReviewModal({ log, employeeCode, onClose, onSuccess }: Correc
   const [error, setError] = useState<string | null>(null);
 
   const approveMutation = useApproveCorrection(employeeCode);
-  const rejectMutation = useRejectCorrectionMutation(employeeCode);
+  const rejectMutation = useRejectCorrection(employeeCode);
 
   const loading = approveMutation.isPending || rejectMutation.isPending;
 
@@ -472,7 +472,7 @@ export default function AttendancePage() {
 
   // ── Load employee list for search (Manager only) ──────────────
   useEffect(() => {
-    if (isManager) getEmployees().then(setEmployeeList).catch(() => { });
+    if (isManager) getEmployees().then(res => setEmployeeList(res.content)).catch(() => { });
   }, [isManager]);
 
   // ── Computed values ───────────────────────────────────────────
@@ -573,7 +573,7 @@ export default function AttendancePage() {
       const isCurrentMonth = today.getFullYear() === yr && today.getMonth() + 1 === mo;
       const daysToConsider = isCurrentMonth ? today.getDate() : daysInMonth;
       const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-      const weekendArray = weekendDaysStr.split(",").map((s) => s.trim().toLowerCase());
+      const weekendArray = weekendDaysStr.split(",").map((s: string) => s.trim().toLowerCase());
       for (let i = 1; i <= daysToConsider; i++) {
         const d = new Date(yr, mo - 1, i);
         const dateStr = `${yr}-${String(mo).padStart(2, "0")}-${String(i).padStart(2, "0")}`;

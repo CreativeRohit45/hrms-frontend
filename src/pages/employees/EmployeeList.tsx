@@ -242,11 +242,24 @@ export default function EmployeeList({
   onEditEmployee?: (id: number) => void;
   refreshKey: number;
 }) {
-  const { data: employees = [], isLoading, isError, error: queryError, refetch } = useAllEmployees();
+  const [currentPage, setCurrentPage] = useState(0);
+  const pageSize = 50;
+
+  const { data: pageData, isLoading, isError, error: queryError, refetch } = useAllEmployees(currentPage, pageSize);
+  const employees = pageData?.content || [];
+  const totalPages = pageData?.totalPages || 0;
+  
   const deleteMutation = useDeleteEmployee();
 
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // When searching, we keep current page (server filters if backend supported it, 
+  // but here we filter locally on the paged content for now or reset page if we hit the backend).
+  // Directive: reset to page 0 if search query changes to avoid being on page 10 with 0 results.
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchQuery]);
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -375,10 +388,56 @@ export default function EmployeeList({
       )}
 
       {/* ── Results label ── */}
-      {!isLoading && filteredEmployees.length > 0 && searchQuery && (
-        <p className="pt-2 text-center text-xs font-semibold text-gray-400">
-          Showing {filteredEmployees.length} of {employees.length} employees
-        </p>
+      {!isLoading && employees.length > 0 && (
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-100 pt-6 dark:border-gray-800 sm:flex-row">
+          <p className="text-xs font-semibold text-gray-400">
+            {searchQuery 
+              ? `Showing ${filteredEmployees.length} filtered results on this page` 
+              : `Page ${currentPage + 1} of ${totalPages} (${pageData?.totalElements || 0} total employees)`}
+          </p>
+
+          {/* Pagination Buttons */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="flex h-9 min-w-[36px] items-center justify-center rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 shadow-sm transition-all hover:border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-1.5 px-3">
+                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                  // Show pages around current page logic could go here, 
+                  // but for now 1..5 is a good start.
+                  const pageNum = i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`h-8 w-8 rounded-lg text-xs font-black transition-all ${
+                        currentPage === pageNum
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
+                          : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="flex h-9 min-w-[36px] items-center justify-center rounded-xl border border-gray-100 bg-white px-3 text-xs font-bold text-gray-700 shadow-sm transition-all hover:border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Confirm delete modal */}

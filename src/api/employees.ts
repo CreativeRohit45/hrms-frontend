@@ -1,8 +1,9 @@
 import apiClient from "./axios";
 import type { EmployeeCreateRequest, EmployeeResponse } from "../types/employee";
+import type { PageResponse } from "../types/common";
 
-export async function getEmployees(): Promise<EmployeeResponse[]> {
-  const response = await apiClient.get<EmployeeResponse[]>("/api/v1/employees");
+export async function getEmployees(page = 0, size = 50): Promise<PageResponse<EmployeeResponse>> {
+  const response = await apiClient.get<PageResponse<EmployeeResponse>>(`/api/v1/employees?page=${page}&size=${size}`);
   return response.data;
 }
 

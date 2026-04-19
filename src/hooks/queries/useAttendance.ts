@@ -4,16 +4,16 @@
 //  Mutations: correction request, approve/reject correction, overtime.
 // ═══════════════════════════════════════════════════════════════════
 
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
 import { queryClient } from '../../lib/queryClient';
 import {
   getMyAttendanceLogs, getEmployeeLogs, getDailyAttendanceLogs,
   requestCorrection, approveCorrection, rejectCorrection, approveOvertime,
+  getUnifiedInbox,
 } from '../../api/attendance';
 import { getDashboardStats, getEmployeeDashboardStats } from '../../api/dashboard';
 import type { AttendanceLogResponse } from '../../types/attendance';
-import type { DashboardStats } from '../../api/dashboard';
 
 // ── Queries ──────────────────────────────────────────────────────
 
@@ -41,12 +41,24 @@ export function useDailyRosterLogs(date: string, enabled: boolean) {
 }
 
 export function useAttendanceDashboardStats(employeeCode: string) {
-  return useQuery<DashboardStats>({
+  return useQuery<any>({
     queryKey: queryKeys.attendance.dashboardStats(employeeCode),
     queryFn: () =>
       employeeCode === 'me'
         ? getDashboardStats()
         : getEmployeeDashboardStats(employeeCode),
+  });
+}
+
+export function useUnifiedInbox() {
+  return useInfiniteQuery({
+    queryKey: ['attendance', 'inbox'],
+    queryFn: ({ pageParam = 0 }) => getUnifiedInbox(pageParam, 20),
+    getNextPageParam: (lastPage) => {
+      const next = lastPage.number + 1;
+      return next < lastPage.totalPages ? next : undefined;
+    },
+    initialPageParam: 0,
   });
 }
 
@@ -61,9 +73,10 @@ function invalidateAttendanceEcosystem(employeeCode: string) {
   }
   // Roster may also be affected
   queryClient.invalidateQueries({ queryKey: ['attendance', 'roster'] });
-  // Dashboard stats (worked hours, present/absent counts)
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.dashboardStats(employeeCode) });
+  // Unified Inbox invalidation
+  queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
 }
 
 // ── Mutations ────────────────────────────────────────────────────
@@ -81,21 +94,21 @@ export function useRequestCorrection(employeeCode: string) {
   });
 }
 
-export function useApproveCorrection(employeeCode: string) {
+export function useApproveCorrection(employeeCode?: string) {
   return useMutation({
     mutationFn: (logId: number) => approveCorrection(logId),
     onSuccess: () => {
-      invalidateAttendanceEcosystem(employeeCode);
+      invalidateAttendanceEcosystem(employeeCode || 'me');
     },
   });
 }
 
-export function useRejectCorrectionMutation(employeeCode: string) {
+export function useRejectCorrection(employeeCode?: string) {
   return useMutation({
     mutationFn: ({ logId, reason }: { logId: number; reason: string }) =>
       rejectCorrection(logId, reason),
     onSuccess: () => {
-      invalidateAttendanceEcosystem(employeeCode);
+      invalidateAttendanceEcosystem(employeeCode || 'me');
     },
   });
 }

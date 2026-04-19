@@ -137,18 +137,30 @@ export default function DailyRoster() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<string>("ALL");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 50;
+
   const { pushToast } = useAppToast();
 
   useEffect(() => {
-    fetchRoster();
+    setCurrentPage(0);
+    fetchRoster(0);
   }, [selectedDate]);
 
-  const fetchRoster = async () => {
+  useEffect(() => {
+    fetchRoster(currentPage);
+  }, [currentPage]);
+
+  const fetchRoster = async (page = 0) => {
     setLoading(true);
     try {
       const today = toDateString(selectedDate);
-      const response = await api.get(`/api/v1/attendance/roster?date=${today}`);
-      setRoster(response.data);
+      const response = await api.get(`/api/v1/attendance/roster?date=${today}&page=${page}&size=${pageSize}`);
+      setRoster(response.data.content);
+      setTotalPages(response.data.totalPages);
+      setTotalElements(response.data.totalElements);
     } catch (error) {
       pushToast({ title: "Fetch Error", message: "Failed to load team roster", tone: "error" });
     } finally {
@@ -458,11 +470,48 @@ export default function DailyRoster() {
         )}
 
         {/* Table footer */}
-        {!loading && filteredRoster.length > 0 && (
-          <div className="border-t border-gray-50 px-7 py-4 dark:border-gray-800">
+        {!loading && roster.length > 0 && (
+          <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-50 px-7 py-4 dark:border-gray-800 sm:flex-row">
             <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-              {filteredRoster.length} of {stats.total} employees shown
+              Page {currentPage + 1} of {totalPages} ({totalElements} total records)
             </p>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="flex h-8 items-center justify-center rounded-xl border border-gray-100 bg-white px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 transition-all hover:border-gray-200 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed dark:border-gray-800 dark:bg-gray-900"
+                >
+                  Prev
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {[...Array(Math.min(5, totalPages))].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i)}
+                      className={`h-7 w-7 rounded-lg text-[10px] font-black transition-all ${
+                        currentPage === i
+                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                          : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="flex h-8 items-center justify-center rounded-xl border border-gray-100 bg-white px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 transition-all hover:border-gray-200 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed dark:border-gray-800 dark:bg-gray-900"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

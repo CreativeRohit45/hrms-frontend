@@ -1,6 +1,16 @@
 // src/api/attendance.ts
 import apiClient from "./axios";
 import type { AttendanceLogResponse } from "../types/attendance";
+import type { PageResponse } from "../types/common";
+
+/**
+ * GET /api/v1/attendance/inbox
+ * Returns a paginated list of attendance-related requests (corrections, overtime, etc.).
+ */
+export async function getUnifiedInbox(page = 0, size = 50): Promise<PageResponse<any>> {
+  const response = await apiClient.get<PageResponse<any>>(`/api/v1/attendance/inbox?page=${page}&size=${size}`);
+  return response.data;
+}
 
 /**
  * GET /api/v1/attendance/my-logs

@@ -25,6 +25,7 @@ import { AppModal } from "../../components/ui/AppModal";
 // ── TanStack Query hooks (parallel fetching) ──────────────────────
 import { useMyLeaves, useLeaveTypes, useApplyLeave } from "../../hooks/queries/useLeaves";
 import { useMyGatepasses, useApplyGatepass } from "../../hooks/queries/useGatepasses";
+import { useDashboardStats } from "../../hooks/queries/useDashboard";
 
 interface Request {
   id: number;
@@ -583,9 +584,11 @@ function RequestDetailsModal({
 function FloatingActionMenu({
   onLeave,
   onGatepass,
+  isActive,
 }: {
   onLeave: () => void;
   onGatepass: () => void;
+  isActive: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -613,7 +616,9 @@ function FloatingActionMenu({
           <button
             type="button"
             onClick={() => { setOpen(false); onGatepass(); }}
-            className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-xl ring-1 ring-gray-200 transition-all active:scale-95 dark:bg-gray-800 dark:text-white dark:ring-gray-700"
+            disabled={!isActive}
+            title={!isActive ? "You must be punched in to request a gatepass" : ""}
+            className={`flex min-h-[52px] items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-800 shadow-xl ring-1 ring-gray-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-white dark:ring-gray-700`}
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
               <Ticket className="h-4 w-4" />
@@ -645,6 +650,9 @@ export default function MyRequests() {
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [activeTab, setActiveTab] = useState<TabValue>("ALL");
   const { pushToast } = useAppToast();
+
+  const { data: stats } = useDashboardStats();
+  const isActive = !!stats?.currentSession?.active;
 
   // ── Parallel data fetching — no waterfall ──────────────────────
   const { data: leavesRaw = [], isLoading: leavesLoading } = useMyLeaves();
@@ -768,7 +776,9 @@ export default function MyRequests() {
             <button
               type="button"
               onClick={handleOpenGatepass}
-              className="group flex flex-1 min-h-[48px] items-center justify-center gap-2.5 rounded-2xl border border-white/20 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/25 active:scale-[0.97]"
+              disabled={!isActive}
+              title={!isActive ? "You must be punched in to request a gatepass" : ""}
+              className="group flex flex-1 min-h-[48px] items-center justify-center gap-2.5 rounded-2xl border border-white/20 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/25 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-transform duration-200 group-hover:rotate-90">
                 <Plus className="h-4 w-4" />
@@ -824,7 +834,11 @@ export default function MyRequests() {
       </div>
 
       {/* ── FAB ───────────────────────────────────────────────────── */}
-      <FloatingActionMenu onLeave={handleOpenLeave} onGatepass={handleOpenGatepass} />
+      <FloatingActionMenu 
+        onLeave={handleOpenLeave} 
+        onGatepass={handleOpenGatepass} 
+        isActive={isActive}
+      />
     </div>
   );
 }
