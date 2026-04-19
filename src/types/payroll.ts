@@ -34,4 +34,13 @@ export interface PayslipResponse {
   netPay: number;
   
   status: PayrollStatus | string;
+
+  // Manual Adjustments
+  adjustmentBonus: number;
+  adjustmentArrears: number;
+  adjustmentDeductionDamage: number;
+  adjustmentDeductionOther: number;
+  totalAdjustmentAmount: number;
 }
+
+export type AdjustmentType = "BONUS" | "ARREARS" | "DEDUCTION_DAMAGE" | "DEDUCTION_OTHER";

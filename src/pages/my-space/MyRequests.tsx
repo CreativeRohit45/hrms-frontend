@@ -23,7 +23,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { AppModal } from "../../components/ui/AppModal";
 
 // ── TanStack Query hooks (parallel fetching) ──────────────────────
-import { useMyLeaves, useLeaveTypes, useApplyLeave } from "../../hooks/queries/useLeaves";
+import { useMyLeaves, useLeaveTypes, useApplyLeave, useLeavePreview } from "../../hooks/queries/useLeaves";
 import { useMyGatepasses, useApplyGatepass } from "../../hooks/queries/useGatepasses";
 import { useDashboardStats } from "../../hooks/queries/useDashboard";
 
@@ -45,6 +45,7 @@ function getStatusTone(status: string): "neutral" | "success" | "warning" | "dan
   if (status === "APPROVED") return "success";
   if (status === "REJECTED") return "danger";
   if (status === "CANCELLED") return "neutral";
+  if (status === "REVOKED") return "danger";
   return "warning";
 }
 
@@ -139,11 +140,13 @@ function SubmitButton({
   label,
   pendingLabel,
   color = "indigo",
+  disabled,
 }: {
   isPending: boolean;
   label: string;
   pendingLabel: string;
   color?: "indigo" | "orange";
+  disabled?: boolean;
 }) {
   const colorMap = {
     indigo:
@@ -154,7 +157,7 @@ function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={isPending}
+      disabled={isPending || disabled}
       className={`relative w-full min-h-[52px] rounded-2xl px-6 py-3.5 text-base font-black text-white shadow-xl transition-all duration-200 focus:outline-none focus:ring-4 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${colorMap[color]}`}
     >
       <span className={`flex items-center justify-center gap-2 ${isPending ? "opacity-0" : "opacity-100"}`}>
@@ -411,6 +414,13 @@ const statusConfig: Record<
     text: "text-gray-500 dark:text-gray-400",
     border: "border-gray-200 dark:border-gray-700/60",
     label: "Cancelled",
+  },
+  REVOKED: {
+    icon: <AlertCircle className="h-6 w-6" />,
+    bg: "bg-rose-50 dark:bg-rose-950/30",
+    text: "text-rose-600 dark:text-rose-400",
+    border: "border-rose-200 dark:border-rose-800/60",
+    label: "Revoked by Admin",
   },
 };
 
@@ -868,6 +878,18 @@ function LeaveApplyModal({
   const { pushToast } = useAppToast();
   const applyMutation = useApplyLeave();
 
+  // ── Live Balance Preview Logic ──────────────────────────────────
+  const { data: preview, isFetching: previewLoading } = useLeavePreview({
+    leaveTypeId: form.leaveTypeId,
+    startDate: form.startDate,
+    endDate: form.endDate,
+    halfDay: form.halfDay,
+    halfDaySession: form.halfType === "FIRST" ? "FIRST_HALF" : "SECOND_HALF",
+  });
+
+  const isInsufficient = (preview?.balanceAfterDeduction ?? 0) < 0 && !types.find(t => t.id === form.leaveTypeId)?.allowNegativeBalance;
+  const canSubmit = !isInsufficient && !previewLoading && form.startDate && form.endDate && form.leaveTypeId !== 0;
+
   // Auto-select first leave type when types load
   if (form.leaveTypeId === 0 && types.length > 0) {
     setForm((f) => ({ ...f, leaveTypeId: types[0].id }));
@@ -927,6 +949,8 @@ function LeaveApplyModal({
           </div>
         </div>
 
+
+
         {/* Half day toggle row */}
         <div className="rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60">
           <div className="flex min-h-[52px] items-center justify-between px-4 py-3">
@@ -976,6 +1000,50 @@ function LeaveApplyModal({
           )}
         </div>
 
+        {/* ── Balance Preview Card (Apple Receipt Style) ─────────────── */}
+        {(form.startDate && form.endDate && preview) && (
+          <div className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
+            isInsufficient 
+              ? "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20" 
+              : "border-indigo-100 bg-indigo-50/30 dark:border-indigo-900/30 dark:bg-indigo-950/10"
+          }`}>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                <span>Application preview</span>
+                {previewLoading && <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />}
+              </div>
+              
+              <div className="space-y-2 font-medium">
+                <div className="flex justify-between items-center tabular-nums text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Current Balance</span>
+                  <span className="font-bold text-gray-900 dark:text-white uppercase tracking-tight">{preview.currentBalance.toFixed(1)} Days</span>
+                </div>
+                <div className="flex justify-between items-center tabular-nums text-sm">
+                  <span className="text-gray-500 dark:text-gray-400 text-xs text-indigo-600/70">Deduction</span>
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400 tracking-tighter">-{preview.appliedDays.toFixed(1)} Days</span>
+                </div>
+                
+                <div className="pt-2 mt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50 flex justify-between items-center tabular-nums">
+                  <span className="text-xs font-black uppercase tracking-wider text-gray-400">Projected Balance</span>
+                  <span className={`text-lg font-black tracking-tighter ${isInsufficient ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                    {preview.balanceAfterDeduction.toFixed(1)}
+                    <span className="text-[10px] ml-1 uppercase">Days</span>
+                  </span>
+                </div>
+              </div>
+
+              {isInsufficient && (
+                <div className="flex gap-2 items-start mt-2 p-2 rounded-xl bg-rose-50 dark:bg-rose-900/40 border border-rose-100 dark:border-rose-800">
+                  <AlertCircle className="h-3.5 w-3.5 text-rose-500 mt-0.5" />
+                  <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 leading-tight">
+                    Insufficient balance for this leave type.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Reason */}
         <div>
           <FormLabel>Reason</FormLabel>
@@ -991,10 +1059,11 @@ function LeaveApplyModal({
         {/* Actions */}
         <div className="flex flex-col gap-3 pt-1">
           <SubmitButton
-            isPending={applyMutation.isPending}
-            label="Apply for Leave"
-            pendingLabel="Submitting…"
-            color="indigo"
+            isPending={applyMutation.isPending || previewLoading}
+            disabled={!canSubmit}
+            label={isInsufficient ? "Insufficient Balance" : "Apply for Leave"}
+            pendingLabel={previewLoading ? "Calculating..." : "Submitting…"}
+            color={isInsufficient ? "orange" : "indigo"}
           />
           <button
             type="button"

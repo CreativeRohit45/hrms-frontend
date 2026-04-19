@@ -11,13 +11,16 @@ import { queryClient } from '../../lib/queryClient';
 import {
   getMyBalances, getMyLeaves, getLeaveTypes, getPendingLeaves,
   applyForLeave, cancelLeave, approveLeave, rejectLeave,
-  revokeLeave, grantLeave, getMyAuditTrail,
+  revokeLeave, grantLeave, getMyAuditTrail, overrideBalance,
+  adminGetAllLeaveTypes, adminCreateLeaveType, adminUpdateLeaveType, adminDeleteLeaveType,
+  previewLeave
 } from '../../api/leaves';
 import type {
   LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
   LeaveApplyRequest, LeaveActionRequest, LeaveGrantRequest,
-  LeaveBalanceAuditResponse,
+  LeaveBalanceAuditResponse, LeaveOverrideRequest, LeavePreviewResponse,
 } from '../../types/leave';
+import { useState, useEffect } from 'react';
 
 // ── Queries ──────────────────────────────────────────────────────
 
@@ -56,6 +59,13 @@ export function useMyAuditTrail(leaveTypeId?: number, year?: number) {
   return useQuery<LeaveBalanceAuditResponse[]>({
     queryKey: queryKeys.leaves.auditTrail(leaveTypeId, year),
     queryFn: () => getMyAuditTrail(leaveTypeId, year),
+  });
+}
+
+export function useAdminLeaveTypes() {
+  return useQuery<LeaveTypeDTO[]>({
+    queryKey: ['leaves', 'admin', 'types'],
+    queryFn: adminGetAllLeaveTypes,
   });
 }
 
@@ -129,5 +139,75 @@ export function useGrantLeave() {
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.pending() });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
     },
+  });
+}
+
+export function useOverrideBalance() {
+  return useMutation({
+    mutationFn: (data: LeaveOverrideRequest) => overrideBalance(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.pending() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+    },
+  });
+}
+
+// ── Admin Leave Type Mutations ───────────────────────────────────────
+
+export function useCreateLeaveType() {
+  return useMutation({
+    mutationFn: (data: Partial<LeaveTypeDTO>) => adminCreateLeaveType(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
+    },
+  });
+}
+
+export function useUpdateLeaveType() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<LeaveTypeDTO> }) => 
+      adminUpdateLeaveType(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
+    },
+  });
+}
+
+export function useDeleteLeaveType() {
+  return useMutation({
+    mutationFn: (id: number) => adminDeleteLeaveType(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
+    },
+  });
+}
+
+// ── Debounced Preview Hook ───────────────────────────────────────────
+
+export function useLeavePreview(request: LeaveApplyRequest | null) {
+  const [debouncedRequest, setDebouncedRequest] = useState<LeaveApplyRequest | null>(null);
+
+  useEffect(() => {
+    if (!request?.startDate || !request?.endDate || !request?.leaveTypeId) {
+      setDebouncedRequest(null);
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      setDebouncedRequest(request);
+    }, 400); // Architect's requested debounce range (300ms-500ms)
+
+    return () => clearTimeout(handler);
+  }, [request?.startDate, request?.endDate, request?.leaveTypeId, request?.halfDay, request?.halfDaySession]);
+
+  return useQuery<LeavePreviewResponse>({
+    queryKey: ['leaves', 'preview', debouncedRequest],
+    queryFn: () => previewLeave(debouncedRequest!),
+    enabled: !!debouncedRequest,
+    staleTime: 5000,
   });
 }

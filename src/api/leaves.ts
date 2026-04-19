@@ -9,6 +9,7 @@ import type {
   LeaveGrantRequest,
   LeaveBalanceAuditResponse,
   LeavePreviewResponse,
+  LeaveOverrideRequest,
   TeamMemberOnLeave,
   DepartmentAbsenteeDTO,
 } from "../types/leave";
@@ -96,6 +97,11 @@ export async function grantLeave(data: LeaveGrantRequest): Promise<LeaveBalanceR
   return res.data;
 }
 
+export async function overrideBalance(data: LeaveOverrideRequest): Promise<LeaveBalanceResponse> {
+  const res = await apiClient.post<LeaveBalanceResponse>("/api/v1/leaves/admin/override", data);
+  return res.data;
+}
+
 export async function getEmployeeBalances(employeeId: number): Promise<LeaveBalanceResponse[]> {
   const res = await apiClient.get<LeaveBalanceResponse[]>(`/api/v1/leaves/admin/balances/${employeeId}`);
   return res.data;
@@ -127,4 +133,25 @@ export async function getEmployeeRequests(employeeId: number): Promise<LeaveResp
 export async function getLeaveTypes(): Promise<LeaveTypeDTO[]> {
   const res = await apiClient.get<LeaveTypeDTO[]>("/api/v1/leaves/types");
   return res.data;
+}
+
+// ── Admin Leave Type CRUD ───────────────────────────────────────────
+
+export async function adminGetAllLeaveTypes(): Promise<LeaveTypeDTO[]> {
+  const res = await apiClient.get<LeaveTypeDTO[]>("/api/v1/leaves/admin/types");
+  return res.data;
+}
+
+export async function adminCreateLeaveType(data: Partial<LeaveTypeDTO>): Promise<LeaveTypeDTO> {
+  const res = await apiClient.post<LeaveTypeDTO>("/api/v1/leaves/admin/types", data);
+  return res.data;
+}
+
+export async function adminUpdateLeaveType(id: number, data: Partial<LeaveTypeDTO>): Promise<LeaveTypeDTO> {
+  const res = await apiClient.put<LeaveTypeDTO>(`/api/v1/leaves/admin/types/${id}`, data);
+  return res.data;
+}
+
+export async function adminDeleteLeaveType(id: number): Promise<void> {
+  await apiClient.delete(`/api/v1/leaves/admin/types/${id}`);
 }

@@ -23,3 +23,12 @@ export const downloadPayslip = (recordId: number) =>
   apiClient.get(`${BASE}/payslip/${recordId}/download`, {
     responseType: 'blob'
   });
+
+export const recalculateRecord = (recordId: number) =>
+  apiClient.post(`${BASE}/records/${recordId}/recalculate`).then(r => r.data);
+
+export const addAdjustment = (recordId: number, type: string, amount: number, description: string) =>
+  apiClient.post(`${BASE}/records/${recordId}/adjustments?type=${type}&amount=${amount}&description=${description}`).then(r => r.data);
+
+export const deleteAdjustment = (adjustmentId: number) =>
+  apiClient.delete(`${BASE}/adjustments/${adjustmentId}`).then(r => r.data);

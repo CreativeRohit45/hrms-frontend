@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { 
   Calculator, Lock, CheckCircle2, AlertCircle, FileText, 
-  Users, IndianRupee, Timer
+  Users, IndianRupee, Timer, Edit3, RotateCcw, Plus
 } from "lucide-react";
-import { getCompanyPayroll, generatePayrollBulk, lockPayroll } from "../../api/payroll";
+import { 
+  getCompanyPayroll, generatePayrollBulk, lockPayroll, 
+  recalculateRecord 
+} from "../../api/payroll";
 import type { PayslipResponse } from "../../types/payroll";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 
@@ -14,6 +17,8 @@ const MONTHS = [
 
 const YEARS = [2024, 2025, 2026];
 
+import PayrollAdjustmentModal from "./PayrollAdjustmentModal";
+
 export default function AdminPayroll() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -23,6 +28,8 @@ export default function AdminPayroll() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showLockModal, setShowLockModal] = useState(false);
   const [showRunModal, setShowRunModal] = useState(false);
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<PayslipResponse | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   const fetchPayrollData = useCallback(async () => {
@@ -70,6 +77,19 @@ export default function AdminPayroll() {
       fetchPayrollData();
     } catch (err: any) {
       showToast("error", err?.response?.data?.message || "Locking failed");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRecalculate = async (recordId: number) => {
+    setActionLoading(true);
+    try {
+      await recalculateRecord(recordId);
+      showToast("success", "Record recalculated successfully.");
+      fetchPayrollData();
+    } catch (err: any) {
+      showToast("error", err?.response?.data?.message || "Recalculation failed");
     } finally {
       setActionLoading(false);
     }
@@ -183,8 +203,9 @@ export default function AdminPayroll() {
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Net Days</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">LWP Days</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Deductions</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Adjustments</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Net Payout</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -227,7 +248,7 @@ export default function AdminPayroll() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">₹{r.grossPay.toLocaleString()}</span>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">₹{(r.grossPay ?? 0).toLocaleString()}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{r.presentDays}</span>
@@ -236,19 +257,35 @@ export default function AdminPayroll() {
                     <span className={r.absentDays > 0 ? "text-amber-600 font-bold" : "text-gray-400"}>{r.absentDays}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className="text-sm text-rose-500 font-bold">₹{r.totalDeductions.toLocaleString()}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-sm font-black text-gray-900 dark:text-white">₹{r.netPay.toLocaleString()}</span>
+                    <span className="text-sm text-rose-500 font-bold">₹{(r.totalDeductions ?? 0).toLocaleString()}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                      r.status === 'LOCKED' 
-                        ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400' 
-                        : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400'
-                    }`}>
-                      {r.status}
+                    <span className={`text-sm font-bold ${(r.totalAdjustmentAmount ?? 0) > 0 ? "text-emerald-500" : (r.totalAdjustmentAmount ?? 0) < 0 ? "text-rose-500" : "text-gray-400"}`}>
+                      {(r.totalAdjustmentAmount ?? 0) > 0 ? "+" : ""}{(r.totalAdjustmentAmount ?? 0).toLocaleString()}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="text-sm font-black text-gray-900 dark:text-white">₹{(r.netPay ?? 0).toLocaleString()}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                       <button 
+                         onClick={() => { setSelectedRecord(r); setShowAdjustmentModal(true); }}
+                         disabled={r.status === 'LOCKED' || r.status === 'PAID'}
+                         className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-indigo-600 rounded-lg transition-colors disabled:opacity-30"
+                         title="Edit Adjustments"
+                       >
+                         <Edit3 size={16} />
+                       </button>
+                       <button 
+                         onClick={() => handleRecalculate(r.recordId)}
+                         disabled={r.status === 'LOCKED' || r.status === 'PAID' || actionLoading}
+                         className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-500 rounded-lg transition-colors disabled:opacity-30"
+                         title="Recalculate Record"
+                       >
+                         <RotateCcw size={16} className={actionLoading ? "animate-spin" : ""} />
+                       </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -293,11 +330,11 @@ export default function AdminPayroll() {
                <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Base Salary</p>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">₹{r.grossPay.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">₹{(r.grossPay ?? 0).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Deductions</p>
-                    <p className="text-sm font-bold text-rose-500">₹{r.totalDeductions.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-rose-500">₹{(r.totalDeductions ?? 0).toLocaleString()}</p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Net Days / LWP</p>
@@ -309,7 +346,7 @@ export default function AdminPayroll() {
                
                <div className="flex items-end justify-between pt-1">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Net Payout</p>
-                  <p className="text-xl font-black text-gray-900 dark:text-white leading-none">₹{r.netPay.toLocaleString()}</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white leading-none">₹{(r.netPay ?? 0).toLocaleString()}</p>
                </div>
              </div>
           ))}
@@ -330,6 +367,15 @@ export default function AdminPayroll() {
       </div>
 
       {/* Modals */}
+      {selectedRecord && (
+        <PayrollAdjustmentModal
+          isOpen={showAdjustmentModal}
+          onClose={() => { setShowAdjustmentModal(false); setSelectedRecord(null); }}
+          record={selectedRecord}
+          onSuccess={() => { fetchPayrollData(); }}
+        />
+      )}
+
       <ConfirmModal 
         isOpen={showRunModal}
         onClose={() => setShowRunModal(false)}

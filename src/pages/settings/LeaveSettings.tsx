@@ -1,51 +1,68 @@
-import { useEffect, useState } from "react";
-import { getLeaveTypes } from "../../api/leaves";
-import type { LeaveTypeDTO } from "../../types/leave";
-import { 
-  Settings, 
-  RotateCw, 
-  Plus, 
-  AlertCircle, 
-  CheckCircle2, 
+import { useState } from "react";
+import {
+  Settings,
+  RotateCw,
+  Plus,
+  AlertCircle,
+  CheckCircle2,
   ShieldCheck,
-  CalendarDays
+  CalendarDays,
+  Edit2,
+  Trash2,
+  Scale,
+  User,
+  Info,
+  ChevronRight,
+  Loader2
 } from "lucide-react";
+import { AppModal } from "../../components/ui/AppModal";
+import { useAppToast } from "../../components/ui/ToastProvider";
+import {
+  useLeaveTypes,
+  useAdminLeaveTypes,
+  useCreateLeaveType,
+  useUpdateLeaveType,
+  useDeleteLeaveType,
+  useOverrideBalance
+} from "../../hooks/queries/useLeaves";
+import type { LeaveTypeDTO } from "../../types/leave";
 import apiClient from "../../api/axios";
 
 export default function LeaveSettings() {
-  const [types, setTypes] = useState<LeaveTypeDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { pushToast } = useAppToast();
+
+  // ── Data Layer ──────────────────────────────────────────────────
+  const { data: activeTypes = [], isLoading: activeLoading } = useLeaveTypes();
+  const { data: adminTypes = [], isLoading: adminLoading } = useAdminLeaveTypes();
+
   const [accrualLoading, setAccrualLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [modalState, setModalState] = useState<{
+    mode: "CREATE" | "EDIT" | "OVERRIDE" | "NONE";
+    selectedType?: LeaveTypeDTO;
+  }>({ mode: "NONE" });
 
-  useEffect(() => {
-    fetchTypes();
-  }, []);
+  const createMutation = useCreateLeaveType();
+  const updateMutation = useUpdateLeaveType();
+  const overrideMutation = useOverrideBalance();
 
-  async function fetchTypes() {
-    try {
-      const data = await getLeaveTypes();
-      setTypes(data);
-    } catch (err) {
-      console.error("Failed to fetch leave types", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleRunAccrual() {
-    if (!confirm("This will trigger the monthly leave credit for all active employees. Are you sure?")) return;
+  const handleRunAccrual = async () => {
+    if (!confirm("This will trigger the monthly leave credit for all active employees. Continue?")) return;
     setAccrualLoading(true);
-    setStatus(null);
     try {
       await apiClient.post("/api/v1/leaves/admin/accrual/run");
-      setStatus({ type: "success", msg: "Monthly accrual processed successfully!" });
+      pushToast({ title: "Accrual Complete", message: "Monthly leave credits processed.", tone: "success" });
     } catch (err: any) {
-      setStatus({ type: "error", msg: err?.response?.data?.message || "Accrual failed. It might have already run today." });
+      pushToast({
+        title: "Accrual Failed",
+        message: err?.response?.data?.message || "Already run today.",
+        tone: "error"
+      });
     } finally {
       setAccrualLoading(false);
     }
-  }
+  };
+
+  const loading = activeLoading || adminLoading;
 
   if (loading) return <div className="p-12 animate-pulse font-mono flex items-center justify-center text-gray-400">Loading Configuration...</div>;
 
@@ -61,26 +78,14 @@ export default function LeaveSettings() {
         </div>
       </div>
 
-      {status && (
-        <div className={`p-4 rounded-2xl border flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${
-          status.type === "success" 
-            ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300" 
-            : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
-        }`}>
-          {status.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="text-sm font-bold">{status.msg}</span>
-          <button onClick={() => setStatus(null)} className="ml-auto opacity-50 hover:opacity-100 font-black">✕</button>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left: Global Triggers */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="card p-6 border-l-4 border-indigo-600">
+          <div className="card p-6 border-l-4 border-indigo-600 bg-white dark:bg-gray-900 shadow-sm rounded-3xl">
             <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6">Accrual Engine</h3>
             <div className="space-y-4">
-              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                     <RotateCw size={20} className={accrualLoading ? "animate-spin" : ""} />
@@ -90,7 +95,7 @@ export default function LeaveSettings() {
                     <p className="text-[10px] text-gray-500 font-medium">Trigger monthly credits now</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={handleRunAccrual}
                   disabled={accrualLoading}
                   className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
@@ -105,7 +110,7 @@ export default function LeaveSettings() {
                   <div>
                     <h4 className="text-xs font-bold text-amber-800 dark:text-amber-400">Idempotency Guard</h4>
                     <p className="text-[10px] text-amber-700 dark:text-amber-500/80 mt-1 leading-relaxed">
-                      This system prevents double-crediting. If you run it twice on the same day, the second attempt will be blocked.
+                      Only one accrual can run per 24h cycle to prevent ghost credits.
                     </p>
                   </div>
                 </div>
@@ -113,119 +118,70 @@ export default function LeaveSettings() {
             </div>
           </div>
 
-          <div className="card p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6">Financial Controls</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-[0.1em] text-gray-400 mb-2 block">Payroll Lock Date</label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type="date" className="input-base pl-10 text-xs font-bold" defaultValue="2026-03-31" />
+          <div className="card p-6 border-l-4 border-emerald-600 bg-white dark:bg-gray-900 shadow-sm rounded-3xl">
+            <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-6">Ledger Actions</h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => setModalState({ mode: "OVERRIDE" })}
+                className="w-full group flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-800/40 transition-all hover:translate-x-1"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <Scale size={18} />
                   </div>
-                  <button className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl text-xs font-bold hover:bg-gray-200 transition-colors">Lock</button>
+                  <div className="text-left">
+                    <p className="text-sm font-black text-emerald-800 dark:text-emerald-400">Manual Override</p>
+                    <p className="text-[10px] text-emerald-600/70 font-bold uppercase tracking-tight">Adjust existing balances</p>
+                  </div>
                 </div>
-                <p className="text-[9px] text-gray-400 mt-2 italic">Cancellations before this date will be restricted.</p>
-              </div>
+                <ChevronRight size={16} className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-all" />
+              </button>
             </div>
           </div>
         </div>
 
         {/* Right: Leave Types List */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="card overflow-hidden">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h3 className="font-bold dark:text-white text-sm">Leave Bucket Configuration</h3>
-              <button disabled className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold flex items-center gap-2 opacity-50 cursor-not-allowed">
-                <Plus size={14} /> New Type
+          <div className="card overflow-hidden bg-white dark:bg-gray-900 shadow-sm rounded-3xl border border-gray-100 dark:border-gray-800">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/30 dark:bg-gray-800/20">
+              <h3 className="font-black dark:text-white text-sm uppercase tracking-widest text-gray-400">Policy Buckets</h3>
+              <button
+                onClick={() => setModalState({ mode: "CREATE" })}
+                className="px-5 py-2.5 bg-gray-900 dark:bg-indigo-600 text-white rounded-2xl text-xs font-black flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-gray-900/10"
+              >
+                <Plus size={16} strokeWidth={3} /> NEW POLICY
               </button>
             </div>
-            <div className="max-md:hidden overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[10px] uppercase tracking-widest">
-                    <th className="px-6 py-4">Type / Code</th>
-                    <th className="px-6 py-4 text-center">Annual / Accrual</th>
-                    <th className="px-6 py-4 text-center">Policies</th>
-                    <th className="px-6 py-4 text-center">Status</th>
-                    <th className="px-6 py-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {types.map((t) => (
-                    <tr key={t.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-xs text-gray-500">
-                            {t.code}
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-900 dark:text-white text-sm">{t.name}</p>
-                            <span className={`text-[10px] font-black tracking-widest ${t.paid ? "text-emerald-500" : "text-amber-500"}`}>
-                              {t.paid ? "PAID" : "UNPAID"}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex flex-col">
-                          <span className="text-sm font-black text-gray-900 dark:text-white">{t.defaultAnnualQuota}d</span>
-                          <span className="text-[10px] text-gray-400 font-bold">+{t.monthlyAccrualRate}/mo</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-wrap justify-center gap-1.5 max-w-[150px] mx-auto">
-                          {t.carryForwardAllowed && <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 text-[8px] font-black px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900 uppercase">CarryFW</span>}
-                          {t.requiresAttachment && <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-900 uppercase">Attach</span>}
-                          {t.allowNegativeBalance && <span className="bg-red-50 dark:bg-red-950/40 text-red-500 text-[8px] font-black px-1.5 py-0.5 rounded border border-red-100 dark:border-red-900 uppercase">Negative</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-[9px] font-black tracking-tighter shadow-sm border ${
-                          t.active 
-                            ? "bg-emerald-500 text-white border-emerald-400" 
-                            : "bg-gray-400 text-white border-gray-300"
-                        }`}>
-                          {t.active ? "ACTIVE" : "DISABLED"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <button className="text-gray-400 hover:text-indigo-600 p-2 transition-colors">
-                          <Settings size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
 
-            {/* MOBILE CARDS */}
-            <div className="md:hidden divide-y divide-gray-50 dark:divide-gray-800">
-              {types.map((t) => (
-                <div key={t.id} className="p-5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-xs text-gray-500">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
+              {adminTypes.map((t) => (
+                <div key={t.id} className="p-5 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-xs text-indigo-500 shadow-inner">
                       {t.code}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
-                        <p className="font-bold text-gray-900 dark:text-white text-sm">{t.name}</p>
-                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black tracking-tighter border ${
-                          t.active ? "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30" : "text-gray-500 border-gray-200 bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800"
-                        }`}>
+                        <p className="font-black text-gray-900 dark:text-white text-sm tracking-tight">{t.name}</p>
+                        <span className={`inline-flex px-1.5 py-0.5 rounded-lg text-[8px] font-black tracking-tighter border ${t.active ? "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800/50" : "text-gray-400 border-gray-200 bg-gray-50 dark:text-gray-500 dark:border-gray-700 dark:bg-gray-800"
+                          }`}>
                           {t.active ? "ACTIVE" : "DISABLED"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] font-semibold text-gray-500 dark:text-gray-400">
-                        <span>{t.defaultAnnualQuota}d Total</span>
-                        <span className="text-gray-300 dark:text-gray-600">•</span>
-                        <span>+{t.monthlyAccrualRate}/mo</span>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 tabular-nums uppercase">
+                        <span>{t.defaultAnnualQuota}d Limit</span>
+                        <span className="opacity-30">•</span>
+                        <span>{t.paid ? "Paid" : "Unpaid"}</span>
+                        <span className="opacity-30">•</span>
+                        <span className="text-indigo-400">+{t.monthlyAccrualRate}/mo</span>
                       </div>
                     </div>
                   </div>
-                  <button className="text-gray-400 hover:text-indigo-600 p-2 transition-colors">
-                    <Settings size={18} />
+                  <button
+                    onClick={() => setModalState({ mode: "EDIT", selectedType: t })}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 hover:text-indigo-500 transition-all active:scale-90 opacity-0 group-hover:opacity-100"
+                  >
+                    <Edit2 size={16} />
                   </button>
                 </div>
               ))}
@@ -233,6 +189,252 @@ export default function LeaveSettings() {
           </div>
         </div>
       </div>
+
+      {/* ── MODALS ────────────────────────────────────────────────── */}
+      {modalState.mode === "OVERRIDE" && (
+        <AdjustBalanceModal
+          onClose={() => setModalState({ mode: "NONE" })}
+          onSuccess={() => setModalState({ mode: "NONE" })}
+          activeTypes={activeTypes}
+        />
+      )}
+
+      {(modalState.mode === "CREATE" || modalState.mode === "EDIT") && (
+        <LeaveTypeModal
+          mode={modalState.mode}
+          type={modalState.selectedType}
+          onClose={() => setModalState({ mode: "NONE" })}
+          onSuccess={() => setModalState({ mode: "NONE" })}
+        />
+      )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sub-Component: LeaveTypeModal
+// ─────────────────────────────────────────────────────────────────
+function LeaveTypeModal({ mode, type, onClose, onSuccess }: any) {
+  const { pushToast } = useAppToast();
+  const createMutation = useCreateLeaveType();
+  const updateMutation = useUpdateLeaveType();
+
+  const [formData, setFormData] = useState<Partial<LeaveTypeDTO>>(
+    type || {
+      name: "",
+      code: "",
+      paid: true,
+      active: true,
+      defaultAnnualQuota: 12,
+      monthlyAccrualRate: 1,
+      requiresAttachment: false,
+      allowNegativeBalance: false,
+      carryForwardAllowed: false,
+      maxCarryForwardDays: 0
+    }
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (mode === "CREATE") {
+        await createMutation.mutateAsync(formData);
+      } else {
+        await updateMutation.mutateAsync({ id: type.id, data: formData });
+      }
+      pushToast({ title: "Updated", message: "Leave policy saved successfully.", tone: "success" });
+      onSuccess();
+    } catch (err: any) {
+      pushToast({ title: "Error", message: err.response?.data?.message || "Operation failed", tone: "error" });
+    }
+  };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <AppModal isOpen title={mode === "CREATE" ? "New Leave Policy" : "Edit Policy Bucket"} onClose={onClose} size="lg">
+      <form onSubmit={handleSubmit} className="space-y-6 pb-6 pt-2">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2 sm:col-span-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Bucket Name</label>
+            <input
+              required
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g. Annual Leave"
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Unique Code</label>
+            <input
+              required
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 uppercase"
+              value={formData.code}
+              onChange={e => setFormData({ ...formData, code: e.target.value })}
+              placeholder="e.g. AL"
+              disabled={mode === "EDIT"}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Annual Quota</label>
+            <input
+              type="number" step="0.5"
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none"
+              value={formData.defaultAnnualQuota}
+              onChange={e => setFormData({ ...formData, defaultAnnualQuota: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Monthly Accrual</label>
+            <input
+              type="number" step="0.1"
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none"
+              value={formData.monthlyAccrualRate}
+              onChange={e => setFormData({ ...formData, monthlyAccrualRate: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 p-1 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+          {[
+            { label: "Is Paid", field: "paid" },
+            { label: "Is Active", field: "active" },
+            { label: "Allow Negative", field: "allowNegativeBalance" },
+            { label: "Requires Docs", field: "requiresAttachment" }
+          ].map(opt => (
+            <button
+              key={opt.field}
+              type="button"
+              onClick={() => setFormData({ ...formData, [opt.field]: !((formData as any)[opt.field]) })}
+              className={`flex items-center justify-between p-3 rounded-xl transition-all ${(formData as any)[opt.field]
+                  ? "bg-white dark:bg-gray-700 shadow-sm text-indigo-600 dark:text-indigo-400"
+                  : "text-gray-400"
+                }`}
+            >
+              <span className="text-[10px] font-black uppercase tracking-tight">{opt.label}</span>
+              <div className={`w-3.5 h-3.5 rounded-full border-2 transition-all ${(formData as any)[opt.field] ? "bg-indigo-500 border-indigo-500" : "border-gray-300 dark:border-gray-600"
+                }`} />
+            </button>
+          ))}
+        </div>
+
+        <button
+          disabled={isPending}
+          className="w-full py-4 bg-gray-900 dark:bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+        >
+          {isPending ? <Loader2 className="animate-spin h-4 w-4" /> : "Commit Policy Changes"}
+        </button>
+      </form>
+    </AppModal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sub-Component: AdjustBalanceModal
+// ─────────────────────────────────────────────────────────────────
+function AdjustBalanceModal({ onClose, onSuccess, activeTypes }: any) {
+  const { pushToast } = useAppToast();
+  const overrideMutation = useOverrideBalance();
+
+  const [form, setForm] = useState({
+    employeeId: "",
+    leaveTypeId: activeTypes[0]?.id || "",
+    amount: "0",
+    reason: ""
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (Number(form.amount) === 0) return pushToast({ title: "Invalid", message: "Amount cannot be zero", tone: "info" });
+
+    try {
+      await overrideMutation.mutateAsync({
+        employeeId: Number(form.employeeId),
+        leaveTypeId: Number(form.leaveTypeId),
+        amount: Number(form.amount),
+        reason: form.reason
+      });
+      pushToast({ title: "Override Success", message: "Ledger updated successfully.", tone: "success" });
+      onSuccess();
+    } catch (err: any) {
+      pushToast({ title: "Error", message: err.response?.data?.message || "Adjustment failed", tone: "error" });
+    }
+  };
+
+  return (
+    <AppModal isOpen title="Manual Ledger Override" onClose={onClose} size="lg">
+      <form onSubmit={handleSubmit} className="space-y-6 pb-6 pt-2">
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/50 flex gap-3">
+          <AlertCircle className="text-rose-600 flex-shrink-0" size={20} />
+          <div>
+            <p className="text-xs font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest">Permanent Override</p>
+            <p className="text-[10px] text-rose-700 dark:text-rose-500/80 mt-1">
+              This will bypass eligibility checks and directly modify the employee's balance. Every change is tracked.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Target Employee ID</label>
+          <div className="relative">
+            <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              required
+              type="number"
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none"
+              placeholder="System ID (e.g. 42)"
+              value={form.employeeId}
+              onChange={e => setForm({ ...form, employeeId: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Leave Category</label>
+            <select
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none appearance-none"
+              value={form.leaveTypeId}
+              onChange={e => setForm({ ...form, leaveTypeId: e.target.value })}
+            >
+              {activeTypes.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Adjustment (+/-)</label>
+            <input
+              required
+              type="number" step="0.5"
+              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold tabular-nums dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none"
+              value={form.amount}
+              onChange={e => setForm({ ...form, amount: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Audit Reason</label>
+          <textarea
+            required
+            rows={3}
+            className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none resize-none"
+            placeholder="Mandatory explanation for this override..."
+            value={form.reason}
+            onChange={e => setForm({ ...form, reason: e.target.value })}
+          />
+        </div>
+
+        <button
+          disabled={overrideMutation.isPending}
+          className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+        >
+          {overrideMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : "Execute Ledger Adjustment"}
+        </button>
+      </form>
+    </AppModal>
   );
 }

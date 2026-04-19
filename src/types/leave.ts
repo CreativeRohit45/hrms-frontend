@@ -1,6 +1,6 @@
 // src/types/leave.ts ── Leave Management Type Definitions
 
-export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "REVOKED";
 
 export interface LeaveTypeDTO {
   id: number;
@@ -68,6 +68,13 @@ export interface LeaveActionRequest {
 }
 
 export interface LeaveGrantRequest {
+  employeeId: number;
+  leaveTypeId: number;
+  amount: number;
+  reason: string;
+}
+
+export interface LeaveOverrideRequest {
   employeeId: number;
   leaveTypeId: number;
   amount: number;

@@ -19,8 +19,10 @@ interface AttendanceRosterItem {
 
 // ── Helpers ───────────────────────────────────────────────────────
 function getInitials(name: string) {
+  if (!name) return "??";
   return name
     .split(" ")
+    .filter(Boolean)
     .map((n) => n[0])
     .slice(0, 2)
     .join("")
@@ -44,7 +46,10 @@ function AttendanceBadge({ status }: { status: string }) {
     ABSENT: { label: "Absent", cls: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800/60" },
     ON_LEAVE: { label: "On Leave", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-800/60" },
   };
-  const cfg = map[status] ?? { label: status.replaceAll("_", " "), cls: "bg-gray-100 text-gray-600 ring-1 ring-gray-200/60 dark:bg-gray-800 dark:text-gray-300" };
+  const cfg = map[status] ?? { 
+    label: status?.replaceAll("_", " ") ?? "Unknown", 
+    cls: "bg-gray-100 text-gray-600 ring-1 ring-gray-200/60 dark:bg-gray-800 dark:text-gray-300" 
+  };
   return (
     <span className={`inline-flex items-center rounded-xl px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${cfg.cls}`}>
       {cfg.label}
@@ -163,6 +168,9 @@ export default function DailyRoster() {
       setTotalElements(response.data.totalElements);
     } catch (error) {
       pushToast({ title: "Fetch Error", message: "Failed to load team roster", tone: "error" });
+      setRoster([]);
+      setTotalPages(0);
+      setTotalElements(0);
     } finally {
       setLoading(false);
     }
@@ -185,10 +193,10 @@ export default function DailyRoster() {
   });
 
   const stats = {
-    total: roster.length,
-    present: roster.filter((r) => r.attendanceStatus === "PRESENT").length,
-    late: roster.filter((r) => r.attendanceStatus === "LATE").length,
-    absent: roster.filter((r) => r.attendanceStatus === "ABSENT").length,
+    total: roster?.length || 0,
+    present: roster?.filter((r) => r.attendanceStatus === "PRESENT").length || 0,
+    late: roster?.filter((r) => r.attendanceStatus === "LATE").length || 0,
+    absent: roster?.filter((r) => r.attendanceStatus === "ABSENT").length || 0,
   };
 
   const FILTERS = ["ALL", "PRESENT", "LATE", "ABSENT", "ON_LEAVE"] as const;
