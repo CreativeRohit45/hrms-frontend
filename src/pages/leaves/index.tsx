@@ -14,6 +14,8 @@ import {
   Shield, Gift,
 } from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { useAppToast } from "../../components/ui/ToastProvider";
+import { SkeletonStrip, SkeletonTable } from "../../components/ui/Skeletons";
 import { AppModal } from "../../components/ui/AppModal";
 import {
   useMyBalances, useMyLeaves, useLeaveTypes, usePendingLeaves,
@@ -73,11 +75,10 @@ export default function LeavesPage() {
   const [revokeTarget, setRevokeTarget] = useState<number | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const { pushToast } = useAppToast();
 
   function showToast(type: "success" | "error", msg: string) {
-    setToast({ type, msg });
-    setTimeout(() => setToast(null), 4000);
+    pushToast({ title: type === "success" ? "Success" : "Error", message: msg, tone: type === "success" ? "success" : "error" });
   }
 
   // ── Actions (now using mutation hooks) ─────────────────────────
@@ -125,8 +126,13 @@ export default function LeavesPage() {
 
   // ── Loading ──────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex items-center justify-center h-64 animate-pulse">
-      <div className="text-gray-400 dark:text-gray-500 font-mono text-sm">Loading leave data...</div>
+    <div className="max-w-[1400px] mx-auto space-y-8 pb-12 animate-in fade-in duration-300">
+      <div className="space-y-2">
+        <div className="h-8 w-56 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700/60" />
+        <div className="h-4 w-40 animate-pulse rounded-md bg-gray-100 dark:bg-gray-800/60" />
+      </div>
+      <SkeletonStrip count={4} />
+      <SkeletonTable rows={5} columns={5} />
     </div>
   );
 
@@ -136,17 +142,7 @@ export default function LeavesPage() {
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-12 animate-in fade-in duration-500">
 
-      {/* ── Toast ──────────────────────────────────────────────── */}
-      {toast && (
-        <div className={`fixed top-20 right-6 z-50 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2 animate-in slide-in-from-right duration-300 ${toast.type === "success"
-          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-          : "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
-          }`}>
-          {toast.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-          {toast.msg}
-          <button onClick={() => setToast(null)} className="ml-2 opacity-50 hover:opacity-100"><X size={14} /></button>
-        </div>
-      )}
+      {/* Toast is handled globally by ToastProvider */}
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

@@ -153,6 +153,28 @@ export function useOverrideBalance() {
   });
 }
 
+export function useAdminOverrideBalance() {
+  return useMutation({
+    mutationFn: (data: LeaveOverrideRequest) => overrideBalance(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.employeeBalances(variables.employeeId) });
+      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'audit', variables.employeeId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
+    },
+  });
+}
+
+export function useBulkGrantLeaves() {
+  return useMutation({
+    mutationFn: (data: { employeeIds: number[]; leaveTypeId: number; amount: number; reason: string }) => {
+      return import('../../api/leaves').then(m => m.bulkGrantLeaves(data));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leaves'] });
+    },
+  });
+}
+
 // ── Admin Leave Type Mutations ───────────────────────────────────────
 
 export function useCreateLeaveType() {

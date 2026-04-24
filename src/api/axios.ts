@@ -5,7 +5,7 @@ import axios, {
   type AxiosError 
 } from "axios";
 
-const BASE_URL = "";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 export const TOKEN_KEY = "hrms_auth_user";
 
 const apiClient: AxiosInstance = axios.create({

@@ -1,11 +1,10 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Users, Search,
-  Clock, AlertCircle,
-  ChevronLeft, ChevronRight, RefreshCw,
-  Wifi, CalendarDays, Filter, X
+  Clock,
+  ChevronLeft, ChevronRight,
+  Wifi, CalendarDays, Filter, Sparkles
 } from "lucide-react";
-import { useAppToast } from "../../components/ui/ToastProvider";
 import { useDailyRosterLogs } from "../../hooks/queries/useAttendance";
 import { useShifts } from "../../hooks/queries/useSettings";
 import { formatTime } from "../../types/attendance";
@@ -151,8 +150,7 @@ export default function DailyRoster() {
 
   const { 
     data: rosterData, 
-    isLoading, 
-    refetch 
+    isLoading 
   } = useDailyRosterLogs(
     toDateString(selectedDate),
     currentPage,

@@ -35,3 +35,7 @@ export async function updateMyProfile(data: { phone?: string; email?: string; ph
 export async function deleteEmployee(id: number): Promise<void> {
   await apiClient.delete(`/api/v1/employees/${id}`);
 }
+
+export async function changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
+  await apiClient.put("/api/v1/employees/me/password", data);
+}

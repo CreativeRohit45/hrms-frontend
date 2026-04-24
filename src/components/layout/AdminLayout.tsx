@@ -4,13 +4,15 @@ import {
   LayoutGrid, Users, Clock3, ClipboardList, Wallet, Settings,
   UserCircle2, ReceiptText, CalendarDays, MoonStar,
   SunMedium, LogOut, Menu, X, ChevronRight, Inbox,
-  User, ChevronLeft
+  User, ChevronLeft, LineChart, Layers
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { getGroupedNavItems } from "../../lib/navigation";
 import { StatusBadge } from "../ui/StatusBadge";
+import { Breadcrumbs } from "../ui/Breadcrumbs";
+import { NotificationBell } from "./NotificationBell";
 
 const ITEM_ICONS: Record<string, LucideIcon> = {
   "/app/dashboard": LayoutGrid,
@@ -21,6 +23,8 @@ const ITEM_ICONS: Record<string, LucideIcon> = {
   "/app/team/roster": CalendarDays,
   "/app/team/inbox": Inbox,
   "/app/payroll": Wallet,
+  "/app/analytics": LineChart,
+  "/app/bulk-ops": Layers,
   "/app/my-payslips": ReceiptText,
   "/app/settings": Settings,
 };
@@ -95,6 +99,8 @@ export default function AdminLayout() {
               <StatusBadge label={`Payroll locked ${payrollLockDate}`} tone="warning" />
             </div>
           )}
+
+          <NotificationBell />
 
           <button
             onClick={toggleTheme}
@@ -243,6 +249,7 @@ export default function AdminLayout() {
           ${isCollapsed ? 'md:ml-20' : 'md:ml-72'}
         `}>
           <div className="mx-auto max-w-7xl">
+            <Breadcrumbs />
             <Outlet />
           </div>
         </main>

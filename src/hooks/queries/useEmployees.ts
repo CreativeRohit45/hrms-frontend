@@ -15,6 +15,7 @@ import {
   deleteEmployee,
   getMyProfile,
   updateMyProfile,
+  changePassword,
 } from '../../api/employees';
 import type { EmployeeResponse, EmployeeCreateRequest, EmployeeUpdateRequest } from '../../types/employee';
 import type { PageResponse } from '../../types/common';
@@ -81,6 +82,12 @@ export function useUpdateMyProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
     },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) => changePassword(data),
   });
 }
 

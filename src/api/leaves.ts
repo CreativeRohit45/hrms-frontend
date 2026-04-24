@@ -135,6 +135,10 @@ export async function getLeaveTypes(): Promise<LeaveTypeDTO[]> {
   return res.data;
 }
 
+export async function bulkGrantLeaves(data: { employeeIds: number[]; leaveTypeId: number; amount: number; reason: string }): Promise<void> {
+  await apiClient.post("/api/v1/leaves/admin/bulk-grant", data);
+}
+
 // ── Admin Leave Type CRUD ───────────────────────────────────────────
 
 export async function adminGetAllLeaveTypes(): Promise<LeaveTypeDTO[]> {

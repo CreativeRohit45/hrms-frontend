@@ -40,6 +40,18 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["HR_ADMIN", "SUPER_ADMIN", "DEPARTMENT_MANAGER"] 
   },
   { 
+    label: "HR Analytics", 
+    path: "/app/analytics", 
+    group: "HR Operations", 
+    roles: ["HR_ADMIN", "SUPER_ADMIN"] 
+  },
+  { 
+    label: "Bulk Operations", 
+    path: "/app/bulk-ops", 
+    group: "HR Operations", 
+    roles: ["HR_ADMIN", "SUPER_ADMIN"] 
+  },
+  { 
     label: "Payroll Engine", 
     path: "/app/payroll", 
     group: "HR Operations", 

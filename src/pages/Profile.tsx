@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BriefcaseBusiness, Mail, Phone, UserCircle2 } from "lucide-react";
-import { useMyProfile, useUpdateMyProfile } from "../hooks/queries/useEmployees";
+import { useMyProfile, useUpdateMyProfile, useChangePassword } from "../hooks/queries/useEmployees";
 import { useMyBalances } from "../hooks/queries/useLeaves";
 import { ErrorState } from "../components/ui/ErrorState";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -199,7 +199,60 @@ export default function Profile() {
             </div>
           )}
         </form>
+
+        <ChangePasswordSection />
       </div>
     </div>
+  );
+}
+
+function ChangePasswordSection() {
+  const { pushToast } = useAppToast();
+  const { mutateAsync: changePassword, isPending } = useChangePassword();
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (form.newPassword !== form.confirmPassword) {
+      pushToast({ tone: "error", title: "Validation error", message: "New passwords do not match" });
+      return;
+    }
+    try {
+      await changePassword({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+      pushToast({ tone: "success", title: "Success", message: "Password updated successfully" });
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch {
+      pushToast({ tone: "error", title: "Error", message: "Could not change password. Please check your current password." });
+    }
+  }
+
+  const inputClass = "w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white";
+  const labelClass = "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400";
+
+  return (
+    <form onSubmit={handleSubmit} className="col-span-full space-y-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <section>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Security</p>
+        <div className="mt-4 grid gap-5 md:grid-cols-3">
+          <div>
+            <label className={labelClass}>Current Password</label>
+            <input type="password" required value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>New Password</label>
+            <input type="password" required value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Confirm New Password</label>
+            <input type="password" required value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} className={inputClass} />
+          </div>
+        </div>
+      </section>
+      <div className="flex justify-end border-t border-gray-100 pt-6 dark:border-gray-800">
+        <button type="submit" disabled={isPending || !form.currentPassword || !form.newPassword} className="rounded-2xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white shadow-lg transition-all hover:bg-black disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+          {isPending ? "Updating..." : "Update Password"}
+        </button>
+      </div>
+    </form>
   );
 }

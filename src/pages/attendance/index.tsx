@@ -410,7 +410,10 @@ export default function AttendancePage() {
   // 3. Daily roster (admin roster view)
   const rosterQuery = useDailyRosterLogs(
     rosterDate,
-    viewMode === "roster",
+    0,
+    50,
+    undefined,
+    viewMode === "roster"
   );
 
   // 4. Dashboard stats (weekend days, holidays)
@@ -426,7 +429,7 @@ export default function AttendancePage() {
   }, [activeEmployeeCode, myLogsQuery.data, employeeLogsQuery.data]);
 
   const logs = rawLogs;
-  const dailyLogs = rosterQuery.data ?? [];
+  const dailyLogs = rosterQuery.data?.content ?? [];
 
   const isLoading = viewMode === "roster"
     ? rosterQuery.isLoading

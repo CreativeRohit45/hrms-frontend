@@ -20,6 +20,8 @@ import LeavesPage from "./pages/leaves/index";
 import GatepassPage from "./pages/gatepasses/index";
 import AdminPayroll from "./pages/payroll/AdminPayroll";
 import MyPayslips from "./pages/payroll/MyPayslips";
+import AnalyticsDashboard from "./pages/dashboard/AnalyticsDashboard";
+import AdminBulkOps from "./pages/admin/AdminBulkOps";
 
 // NEW INTENT-BASED PAGES
 import UnifiedInbox from "./pages/team/UnifiedInbox";
@@ -110,6 +112,22 @@ function AppRoutes() {
           element={
             <RoleGuard roles={["HR_ADMIN", "SUPER_ADMIN"]}>
               <AdminPayroll />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <RoleGuard roles={["HR_ADMIN", "SUPER_ADMIN"]}>
+              <AnalyticsDashboard />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="bulk-ops"
+          element={
+            <RoleGuard roles={["HR_ADMIN", "SUPER_ADMIN"]}>
+              <AdminBulkOps />
             </RoleGuard>
           }
         />

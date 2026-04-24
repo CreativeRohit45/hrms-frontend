@@ -90,6 +90,7 @@ export default function EmployeeEdit({
           baseSalary: emp.baseSalary !== null ? String(emp.baseSalary) : "",
           hraPercentage: emp.hraPercentage !== null ? String(emp.hraPercentage) : "40",
           pfPercentage: emp.pfPercentage !== null ? String(emp.pfPercentage) : "12",
+          initialBalances: {},
         });
         setStatus(emp.status);
       } catch (err) {

@@ -4,7 +4,6 @@ import { getServerNow } from "../utils/serverTime";
 import {
   AlertCircle,
   Clock,
-  Palmtree,
   UserCheck,
   Users,
   Timer,
@@ -16,9 +15,11 @@ import { useAuth } from "../context/AuthContext";
 import { EmptyState } from "../components/ui/EmptyState";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAppToast } from "../components/ui/ToastProvider";
+import { SkeletonCard, SkeletonTable } from "../components/ui/Skeletons";
 import { useDashboardStats, useDepartmentAbsentees } from "../hooks/queries/useDashboard";
 import { queryClient } from "../lib/queryClient";
 import { queryKeys } from "../lib/queryKeys";
+import { LeaveBalanceWidget } from "../components/dashboard/LeaveBalanceWidget";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -79,9 +80,28 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center space-y-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading HQ...</p>
+      <div className="space-y-8 animate-in fade-in duration-300">
+        {/* Header skeleton */}
+        <div className="space-y-2">
+          <div className="h-8 w-64 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700/60" />
+          <div className="h-4 w-48 animate-pulse rounded-md bg-gray-100 dark:bg-gray-800/60" />
+        </div>
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        {/* Punch card skeleton */}
+        <div className="animate-pulse rounded-3xl border border-gray-100 bg-white p-8 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-48 rounded-xl bg-gray-200 dark:bg-gray-700/60" />
+            <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700/60" />
+            <div className="h-4 w-32 rounded-md bg-gray-100 dark:bg-gray-800/60" />
+          </div>
+        </div>
+        <SkeletonTable rows={3} columns={4} />
       </div>
     );
   }
@@ -163,36 +183,7 @@ export default function Dashboard() {
         </div>
 
         {/* LEAVE BALANCES */}
-        <div className="rounded-3xl border border-gray-100 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h2 className="text-xl font-black text-gray-900 dark:text-white">Leave Balances</h2>
-              <p className="text-xs font-medium text-gray-500">Available: <span className="font-bold text-indigo-600">{stats.leavesRemaining} days</span></p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/30">
-              <Palmtree className="h-5 w-5" />
-            </div>
-          </div>
-
-          <div className="mt-8 space-y-5">
-            {stats.leaveBalances.map((lb) => (
-              <div key={lb.leaveTypeCode} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{lb.leaveTypeName}</span>
-                  <span className="font-mono text-[10px] font-black text-gray-900 dark:text-white">
-                    {lb.used} / {lb.allocated} <span className="text-[9px] text-gray-400 ml-1">DAYS</span>
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-gray-50 dark:bg-gray-800">
-                  <div 
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-400"
-                    style={{ width: `${lb.allocated > 0 ? (lb.used / lb.allocated) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <LeaveBalanceWidget />
       </div>
 
       {/* ROW 4: AWARENESS */}

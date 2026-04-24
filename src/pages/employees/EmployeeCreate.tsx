@@ -9,7 +9,8 @@ import {
 } from "../../types/employee";
 import { DatePickerField } from "../../components/ui/DatePickerField";
 import { getShifts, getDepartments, getLocations, type Shift, type Department, type CompanyLocation } from "../../api/settings";
-import { getLeaveTypes, type LeaveTypeDTO } from "../../api/leaves";
+import { getLeaveTypes } from "../../api/leaves";
+import type { LeaveTypeDTO } from "../../types/leave";
 import { useEffect, useCallback } from "react";
 
 export default function EmployeeCreate({

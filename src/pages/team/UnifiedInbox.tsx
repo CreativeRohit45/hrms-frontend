@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import {
   CheckCircle2, XCircle, Clock3, CalendarDays,
   MapPin, Inbox, ArrowRight, Ticket, PalmtreeIcon,
-  Sparkles, Bell
+  Bell
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppToast } from "../../components/ui/ToastProvider";
