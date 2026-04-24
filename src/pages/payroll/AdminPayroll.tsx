@@ -311,11 +311,11 @@ export default function AdminPayroll() {
                <div className="flex items-center justify-between">
                  <div className="flex items-center gap-3">
                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-xs text-gray-600 dark:text-gray-400">
-                     {r.fullName.charAt(0)}
+                     {(r.fullName || "N").charAt(0)}
                    </div>
                    <div>
-                     <p className="font-bold text-gray-900 dark:text-white text-sm leading-none">{r.fullName}</p>
-                     <p className="text-[10px] text-gray-400 font-mono mt-1">{r.employeeCode}</p>
+                     <p className="font-bold text-gray-900 dark:text-white text-sm leading-none">{r.fullName || "Unnamed Employee"}</p>
+                     <p className="text-[10px] text-gray-400 font-mono mt-1">{r.employeeCode || "---"}</p>
                    </div>
                  </div>
                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
