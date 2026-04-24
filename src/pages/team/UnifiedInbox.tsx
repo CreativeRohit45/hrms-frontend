@@ -9,14 +9,16 @@ import { useAppToast } from "../../components/ui/ToastProvider";
 import { 
   useUnifiedInbox, 
   useApproveCorrection, 
-  useRejectCorrection 
+  useRejectCorrection,
+  useApproveOvertimeMutation,
+  useRejectOvertimeMutation
 } from "../../hooks/queries/useAttendance";
-import { useApproveLeave, useRejectLeave } from "../../hooks/queries/useLeaves";
+import { useApproveLeave, useRejectLeave, useRevokeLeave } from "../../hooks/queries/useLeaves";
 import { useApproveGatepass, useRejectGatepass } from "../../hooks/queries/useGatepasses";
 
 interface UnifiedRequest {
   id: string; // e.g. "LEAVE-1"
-  type: "LEAVE" | "GATEPASS" | "CORRECTION";
+  type: "LEAVE" | "GATEPASS" | "CORRECTION" | "OVERTIME";
   employeeName: string;
   employeeCode: string;
   details: string;
@@ -63,6 +65,15 @@ const TYPE_CONFIG = {
     strip: "bg-emerald-500",
     avatarBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300",
   },
+  OVERTIME: {
+    label: "Overtime",
+    icon: Clock3,
+    color: "text-purple-500",
+    bgColor: "bg-purple-50 dark:bg-purple-950/40",
+    badgeBg: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+    strip: "bg-purple-500",
+    avatarBg: "bg-purple-100 text-purple-600 dark:bg-purple-900/60 dark:text-purple-300",
+  },
 } as const;
 
 // ── Request Card ──────────────────────────────────────────────────
@@ -72,7 +83,7 @@ function RequestCard({
   isActioning,
 }: {
   req: UnifiedRequest;
-  onAction: (req: UnifiedRequest, action: "approve" | "reject") => void;
+  onAction: (req: UnifiedRequest, action: "approve" | "reject" | "revoke") => void;
   isActioning: boolean;
 }) {
   const cfg = TYPE_CONFIG[req.type];
@@ -119,23 +130,40 @@ function RequestCard({
           </div>
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:shrink-0">
-          <button
-            disabled={isActioning}
-            onClick={() => onAction(req, "approve")}
-            className="group/approve relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-md shadow-indigo-200/60 transition-all duration-150 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200/80 active:scale-[0.97] disabled:opacity-50 dark:shadow-indigo-900/40 sm:w-auto"
-          >
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>Approve</span>
-            <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover/approve:translate-x-0.5" />
-          </button>
-          <button
-            disabled={isActioning}
-            onClick={() => onAction(req, "reject")}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white px-5 py-3 text-sm font-bold text-gray-500 transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.97] disabled:opacity-50 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-rose-900 dark:hover:bg-rose-950/20 dark:hover:text-rose-400 sm:w-auto"
-          >
-            <XCircle className="h-4 w-4 shrink-0" />
-            <span>Reject</span>
-          </button>
+          {req.status === "PENDING" ? (
+            <>
+              <button
+                disabled={isActioning}
+                onClick={() => onAction(req, "approve")}
+                className="group/approve relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-md shadow-indigo-200/60 transition-all duration-150 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200/80 active:scale-[0.97] disabled:opacity-50 dark:shadow-indigo-900/40 sm:w-auto"
+              >
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>Approve</span>
+                <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover/approve:translate-x-0.5" />
+              </button>
+              <button
+                disabled={isActioning}
+                onClick={() => onAction(req, "reject")}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white px-5 py-3 text-sm font-bold text-gray-500 transition-all duration-150 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.97] disabled:opacity-50 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-rose-900 dark:hover:bg-rose-950/20 dark:hover:text-rose-400 sm:w-auto"
+              >
+                <XCircle className="h-4 w-4 shrink-0" />
+                <span>Reject</span>
+              </button>
+            </>
+          ) : req.status === "APPROVED" ? (
+            <button
+              disabled={isActioning}
+              onClick={() => onAction(req, "revoke")}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-5 py-3 text-sm font-black text-rose-600 transition-all duration-150 hover:bg-rose-600 hover:text-white active:scale-[0.97] disabled:opacity-50 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900 sm:w-auto"
+            >
+              <XCircle className="h-4 w-4 shrink-0" />
+              <span>Revoke Approval</span>
+            </button>
+          ) : (
+            <div className="flex h-11 items-center px-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
+              {req.status}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -173,9 +201,6 @@ function InboxZero() {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-xl shadow-emerald-200/60 dark:shadow-emerald-900/40">
           <CheckCircle2 className="h-10 w-10 text-white" strokeWidth={2} />
         </div>
-        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 shadow-sm">
-          <Sparkles className="h-3.5 w-3.5 text-yellow-900" />
-        </div>
       </div>
       <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">You&apos;re all caught up!</h2>
       <p className="mt-2 max-w-xs text-sm text-gray-500 dark:text-gray-400">
@@ -186,15 +211,14 @@ function InboxZero() {
 }
 
 const TABS = [
-  { key: "ALL", label: "All Requests", icon: Inbox },
-  { key: "LEAVE", label: "Leaves", icon: PalmtreeIcon },
-  { key: "GATEPASS", label: "Gatepasses", icon: Ticket },
-  { key: "CORRECTION", label: "Corrections", icon: Clock3 },
+  { key: "PENDING", label: "Pending Requests", icon: Inbox },
+  { key: "APPROVED", label: "Approved History", icon: CheckCircle2 },
+  { key: "REJECTED", label: "Rejected History", icon: XCircle },
 ] as const;
 
 // ── Main Component ────────────────────────────────────────────────
 export default function UnifiedInbox() {
-  const [activeTab, setActiveTab] = useState<"ALL" | "LEAVE" | "GATEPASS" | "CORRECTION">("ALL");
+  const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [actioningId, setActioningId] = useState<string | null>(null);
   const { pushToast } = useAppToast();
   const parentRef = useRef<HTMLDivElement>(null);
@@ -205,7 +229,7 @@ export default function UnifiedInbox() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = useUnifiedInbox();
+  } = useUnifiedInbox(activeTab);
 
   const allRequests = useMemo<UnifiedRequest[]>(() => {
     return data?.pages.flatMap(page => page.content.map((item: any) => ({
@@ -220,10 +244,8 @@ export default function UnifiedInbox() {
     }))) || [];
   }, [data]);
 
-  const filtered = activeTab === "ALL" ? allRequests : allRequests.filter(r => r.type === activeTab);
-
   const virtualizer = useVirtualizer({
-    count: filtered.length,
+    count: allRequests.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 140,
     overscan: 5,
@@ -231,10 +253,10 @@ export default function UnifiedInbox() {
 
   useEffect(() => {
     const lastItem = [...virtualizer.getVirtualItems()].pop();
-    if (lastItem && lastItem.index >= filtered.length - 1 && hasNextPage && !isFetchingNextPage) {
+    if (lastItem && lastItem.index >= allRequests.length - 1 && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [virtualizer.getVirtualItems(), hasNextPage, isFetchingNextPage, fetchNextPage, filtered.length]);
+  }, [virtualizer.getVirtualItems(), hasNextPage, isFetchingNextPage, fetchNextPage, allRequests.length]);
 
   const approveLeave = useApproveLeave();
   const rejectLeave = useRejectLeave();
@@ -242,14 +264,18 @@ export default function UnifiedInbox() {
   const rejectGatepass = useRejectGatepass();
   const approveCorrection = useApproveCorrection();
   const rejectCorrection = useRejectCorrection();
+  const approveOvertime = useApproveOvertimeMutation("me");
+  const rejectOvertime = useRejectOvertimeMutation("me");
+  const revokeLeave = useRevokeLeave();
 
-  const handleAction = async (request: UnifiedRequest, action: "approve" | "reject") => {
+  const handleAction = async (request: UnifiedRequest, action: "approve" | "reject" | "revoke") => {
     const rawId = parseInt(request.id.split("-")[1]);
     const key = request.id;
     setActioningId(key);
     try {
       if (request.type === "LEAVE") {
         if (action === "approve") await approveLeave.mutateAsync(rawId);
+        else if (action === "revoke") await revokeLeave.mutateAsync({ leaveId: rawId, reason: "Revoked by Manager" });
         else await rejectLeave.mutateAsync({ leaveId: rawId, data: { rejectionReason: "Manager action" } });
       } else if (request.type === "GATEPASS") {
         if (action === "approve") await approveGatepass.mutateAsync(rawId);
@@ -257,6 +283,9 @@ export default function UnifiedInbox() {
       } else if (request.type === "CORRECTION") {
         if (action === "approve") await approveCorrection.mutateAsync(rawId);
         else await rejectCorrection.mutateAsync({ logId: rawId, reason: "Manager action" });
+      } else if (request.type === "OVERTIME") {
+        if (action === "approve") await approveOvertime.mutateAsync(rawId);
+        else await rejectOvertime.mutateAsync(rawId);
       }
       pushToast({ title: "Success", message: `${request.type} ${action}d`, tone: "success" });
     } catch {
@@ -265,13 +294,6 @@ export default function UnifiedInbox() {
       setActioningId(null);
     }
   };
-
-  const counts = useMemo(() => ({
-    ALL: allRequests.length,
-    LEAVE: allRequests.filter(r => r.type === "LEAVE").length,
-    GATEPASS: allRequests.filter(r => r.type === "GATEPASS").length,
-    CORRECTION: allRequests.filter(r => r.type === "CORRECTION").length,
-  }), [allRequests]);
 
   return (
     <div className="mx-auto w-full max-w-5xl overflow-hidden space-y-6 px-4 sm:px-6 md:px-8">
@@ -288,7 +310,6 @@ export default function UnifiedInbox() {
           </div>
           <div className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 focus:outline-none">
             <Bell className="h-5 w-5 text-white" />
-            {counts.ALL > 0 && <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-indigo-700">{counts.ALL}</span>}
           </div>
         </div>
       </div>
@@ -297,12 +318,11 @@ export default function UnifiedInbox() {
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setActiveTab(key)}
+            onClick={() => setActiveTab(key as any)}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${activeTab === key ? "bg-white text-indigo-600 shadow dark:bg-gray-800" : "text-gray-500 hover:text-gray-900"}`}
           >
             <Icon className="h-4 w-4" />
             <span>{label}</span>
-            {counts[key] > 0 && <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] dark:bg-indigo-900/50">{counts[key]}</span>}
           </button>
         ))}
       </div>
@@ -311,13 +331,13 @@ export default function UnifiedInbox() {
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : allRequests.length === 0 ? (
         <InboxZero />
       ) : (
         <div ref={parentRef} className="h-[600px] overflow-auto pr-2 no-scrollbar">
           <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
             {virtualizer.getVirtualItems().map((v) => {
-              const req = filtered[v.index];
+              const req = allRequests[v.index];
               return (
                 <div key={req.id} className="absolute left-0 top-0 w-full" style={{ transform: `translateY(${v.start}px)`, height: `${v.size}px` }}>
                   <div className="pb-3">

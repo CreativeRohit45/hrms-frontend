@@ -50,6 +50,7 @@ export interface EmployeeCreateRequest {
   baseSalary?: number;
   hraPercentage?: number;
   pfPercentage?: number;
+  initialBalances?: { leaveTypeId: number; balance: number }[];
 }
 
 export interface EmployeeUpdateRequest extends EmployeeCreateRequest {
@@ -73,6 +74,7 @@ export interface EmployeeFormState {
   baseSalary: string;
   hraPercentage: string;
   pfPercentage: string;
+  initialBalances: Record<number, string>; // Mapping leaveTypeId -> balance string
 }
 
 export const EMPTY_FORM: EmployeeFormState = {
@@ -80,6 +82,7 @@ export const EMPTY_FORM: EmployeeFormState = {
   departmentId: "", designation: "", shiftId: "", locationId: "",
   paymentType: "", hourlyRate: "", overtimeRateMultiplier: "1.50", role: "",
   baseSalary: "", hraPercentage: "40", pfPercentage: "12",
+  initialBalances: {},
 };
 
 // Dropdown options are now fetched dynamically from the API in the components.

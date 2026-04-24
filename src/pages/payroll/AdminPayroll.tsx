@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { 
   Calculator, Lock, CheckCircle2, AlertCircle, FileText, 
-  Users, IndianRupee, Timer, Edit3, RotateCcw, Plus
+  Users, IndianRupee, Timer, Edit3, RotateCcw
 } from "lucide-react";
 import { 
   getCompanyPayroll, generatePayrollBulk, lockPayroll, 

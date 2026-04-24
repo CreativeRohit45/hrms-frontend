@@ -9,6 +9,7 @@ import {
 } from "../../types/employee";
 import { DatePickerField } from "../../components/ui/DatePickerField";
 import { getShifts, getDepartments, getLocations, type Shift, type Department, type CompanyLocation } from "../../api/settings";
+import { getLeaveTypes, type LeaveTypeDTO } from "../../api/leaves";
 import { useEffect, useCallback } from "react";
 
 export default function EmployeeCreate({
@@ -25,19 +26,22 @@ export default function EmployeeCreate({
   const [depts, setDepts] = useState<Department[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [locs, setLocs] = useState<CompanyLocation[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeDTO[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
   const loadOptions = useCallback(async () => {
     setLoadingOptions(true);
     try {
-      const [d, s, l] = await Promise.all([
+      const [d, s, l, lt] = await Promise.all([
         getDepartments(),
         getShifts(),
-        getLocations()
+        getLocations(),
+        getLeaveTypes()
       ]);
       setDepts(d);
       setShifts(s);
       setLocs(l);
+      setLeaveTypes(lt);
 
       // Auto-set first options if not already set
       setForm(prev => ({
@@ -82,6 +86,12 @@ export default function EmployeeCreate({
         baseSalary: Number(form.baseSalary) || 0,
         hraPercentage: Number(form.hraPercentage) || 40,
         pfPercentage: Number(form.pfPercentage) || 12,
+        initialBalances: Object.entries(form.initialBalances)
+          .filter(([_, val]) => val !== "")
+          .map(([typeId, val]) => ({
+            leaveTypeId: Number(typeId),
+            balance: Number(val)
+          }))
       };
       
       const created = await createEmployee(payload);
@@ -239,6 +249,37 @@ export default function EmployeeCreate({
                   <input type="number" step="0.1" name="pfPercentage" value={form.pfPercentage} onChange={handleChange} className="input-base" />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Initial Leave Balances Section */}
+          <div>
+            <h3 className="text-indigo-600 dark:text-indigo-400 text-xs font-mono font-bold uppercase tracking-wider mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
+              Initial Leave Balances (Overrides)
+            </h3>
+            <p className="text-[10px] text-gray-400 mb-4 italic">
+              Optional: Set starting balances for this employee. If left blank, pro-rated defaults will be used.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {leaveTypes.filter(lt => lt.active).map(type => (
+                <div key={type.id}>
+                  <label className={labelCls}>{type.name} ({type.code})</label>
+                  <input 
+                    type="number" 
+                    step="0.5"
+                    className="input-base text-center font-bold"
+                    placeholder="Auto"
+                    value={form.initialBalances[type.id] || ""}
+                    onChange={(e) => setForm(prev => ({
+                      ...prev,
+                      initialBalances: {
+                        ...prev.initialBalances,
+                        [type.id]: e.target.value
+                      }
+                    }))}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 

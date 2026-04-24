@@ -4,14 +4,10 @@ import {
   RotateCw,
   Plus,
   AlertCircle,
-  CheckCircle2,
   ShieldCheck,
-  CalendarDays,
   Edit2,
-  Trash2,
   Scale,
   User,
-  Info,
   ChevronRight,
   Loader2
 } from "lucide-react";
@@ -22,7 +18,6 @@ import {
   useAdminLeaveTypes,
   useCreateLeaveType,
   useUpdateLeaveType,
-  useDeleteLeaveType,
   useOverrideBalance
 } from "../../hooks/queries/useLeaves";
 import type { LeaveTypeDTO } from "../../types/leave";
@@ -41,9 +36,6 @@ export default function LeaveSettings() {
     selectedType?: LeaveTypeDTO;
   }>({ mode: "NONE" });
 
-  const createMutation = useCreateLeaveType();
-  const updateMutation = useUpdateLeaveType();
-  const overrideMutation = useOverrideBalance();
 
   const handleRunAccrual = async () => {
     if (!confirm("This will trigger the monthly leave credit for all active employees. Continue?")) return;

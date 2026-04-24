@@ -50,3 +50,36 @@
            transition-all duration-150;
   }
 }
+
+/* ── Calendar Popover Theme ── */
+.react-calendar {
+  @apply border-none bg-white dark:bg-gray-900 text-sm rounded-3xl overflow-hidden font-sans p-2;
+  width: 320px !important;
+}
+.react-calendar__navigation button {
+  @apply min-w-[44px] bg-none text-gray-800 dark:text-gray-100 font-bold text-base hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all;
+}
+.react-calendar__month-view__weekdays {
+  @apply text-center uppercase font-black text-[10px] tracking-widest text-gray-400 mb-2;
+}
+.react-calendar__month-view__weekdays__weekday { padding: 0.5em; }
+.react-calendar__tile {
+  @apply text-sm font-bold p-3 rounded-2xl transition-all aspect-square flex items-center justify-center;
+}
+.react-calendar__tile:enabled:hover, .react-calendar__tile:enabled:focus {
+  @apply bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400;
+}
+.react-calendar__tile--now {
+  @apply bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700;
+}
+.react-calendar__tile--active {
+  @apply bg-indigo-600 !important;
+  @apply text-white !important;
+  @apply shadow-lg shadow-indigo-200/50 dark:shadow-none;
+}
+.react-calendar__tile--active:enabled:hover, .react-calendar__tile--active:enabled:focus {
+  @apply bg-indigo-700 !important;
+}
+.react-calendar__month-view__days__day--neighboringMonth {
+  @apply text-gray-300 dark:text-gray-700;
+}

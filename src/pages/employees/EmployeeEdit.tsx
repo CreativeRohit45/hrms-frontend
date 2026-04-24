@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import type { LeaveBalanceResponse, LeaveBalanceAuditResponse, LeaveResponse } from "../../types/leave";
 import { getEmployeeRequests } from "../../api/leaves";
+import { useGrantLeave, useOverrideBalance, useRunAccrual } from "../../hooks/queries/useLeaves";
+import { AppModal } from "../../components/ui/AppModal";
 
 export default function EmployeeEdit({
   employeeId,
@@ -46,6 +48,7 @@ export default function EmployeeEdit({
   const [audits, setAudits] = useState<LeaveBalanceAuditResponse[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveResponse[]>([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -344,6 +347,17 @@ export default function EmployeeEdit({
 
       {activeTab === "leaves" && (
         <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-widest text-gray-400">Balance Overview</h3>
+            <button 
+              onClick={() => setShowAdjustModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+            >
+              <ShieldCheck size={14} />
+              Manage Balances
+            </button>
+          </div>
+
           {/* Balances Display Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {balances.map(b => (
@@ -502,6 +516,146 @@ export default function EmployeeEdit({
           </div>
         </div>
       )}
+      {showAdjustModal && (
+        <BalanceAdjustmentModal 
+          employeeId={employeeId} 
+          balances={balances}
+          onClose={() => setShowAdjustModal(false)} 
+          onSuccess={() => {
+            setBalances([]); // Trigger reload
+            setShowAdjustModal(false);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function BalanceAdjustmentModal({ 
+  employeeId, 
+  balances,
+  onClose, 
+  onSuccess 
+}: { 
+  employeeId: number; 
+  balances: LeaveBalanceResponse[];
+  onClose: () => void; 
+  onSuccess: () => void;
+}) {
+  const [mode, setMode] = useState<"GRANT" | "OVERRIDE">("GRANT");
+  const [leaveTypeId, setLeaveTypeId] = useState(balances[0]?.leaveTypeId || 0);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  
+  const grantMutation = useGrantLeave();
+  const overrideMutation = useOverrideBalance();
+  const accrualMutation = useRunAccrual();
+
+  const handleApply = async () => {
+    if (!leaveTypeId || !amount || !reason) return;
+    try {
+      if (mode === "GRANT") {
+        await grantMutation.mutateAsync({ employeeId, leaveTypeId, amount: Number(amount), reason });
+      } else {
+        await overrideMutation.mutateAsync({ employeeId, leaveTypeId, amount: Number(amount), reason });
+      }
+      onSuccess();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAccrual = async () => {
+    if (!window.confirm("Run global accrual engine? This affects all employees.")) return;
+    try {
+      await accrualMutation.mutateAsync();
+      onSuccess();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <AppModal isOpen={true} onClose={onClose} title="Balance Management" size="md">
+      <div className="space-y-6 py-4">
+        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+          <button 
+            onClick={() => setMode("GRANT")}
+            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === "GRANT" ? "bg-white dark:bg-gray-900 text-indigo-600 shadow-sm" : "text-gray-400"}`}
+          >
+            Credit/Debit
+          </button>
+          <button 
+            onClick={() => setMode("OVERRIDE")}
+            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === "OVERRIDE" ? "bg-white dark:bg-gray-900 text-indigo-600 shadow-sm" : "text-gray-400"}`}
+          >
+            Hard Override
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Leave Category</label>
+            <select 
+              value={leaveTypeId} 
+              onChange={(e) => setLeaveTypeId(Number(e.target.value))}
+              className="w-full h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {balances.map(b => (
+                <option key={b.leaveTypeId} value={b.leaveTypeId}>{b.leaveTypeCode}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+              {mode === "GRANT" ? "Adjustment Amount (Days)" : "New Balance Value (Days)"}
+            </label>
+            <input 
+              type="number" 
+              step="0.1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={mode === "GRANT" ? "e.g. 1.5 or -1.0" : "e.g. 15.0"}
+              className="w-full h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 text-sm font-mono font-black"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Justification / Audit Note</label>
+            <textarea 
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4 text-sm font-medium"
+              placeholder="Why is this change being made?"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 pt-4">
+          <button 
+            onClick={handleApply}
+            disabled={grantMutation.isPending || overrideMutation.isPending}
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all"
+          >
+            {grantMutation.isPending || overrideMutation.isPending ? "Updating Ledger..." : "Commit Transaction"}
+          </button>
+          
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100 dark:border-gray-800"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-black text-gray-300 dark:text-gray-700"><span className="bg-white dark:bg-gray-900 px-2 tracking-[0.3em]">Danger Zone</span></div>
+          </div>
+
+          <button 
+            onClick={handleAccrual}
+            disabled={accrualMutation.isPending}
+            className="w-full py-3 border border-amber-200 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all"
+          >
+            {accrualMutation.isPending ? "Running Engine..." : "Trigger Global Accrual Run"}
+          </button>
+        </div>
+      </div>
+    </AppModal>
   );
 }

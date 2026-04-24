@@ -1,21 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Users, Search,
   Clock, AlertCircle,
   ChevronLeft, ChevronRight, RefreshCw,
-  Wifi
+  Wifi, CalendarDays, Filter, X
 } from "lucide-react";
 import { useAppToast } from "../../components/ui/ToastProvider";
-import api from "../../api/axios";
-
-interface AttendanceRosterItem {
-  id: number;
-  fullName: string;
-  employeeCode: string;
-  attendanceStatus: string;
-  punchInTime: string | null;
-  punchOutTime: string | null;
-}
+import { useDailyRosterLogs } from "../../hooks/queries/useAttendance";
+import { useShifts } from "../../hooks/queries/useSettings";
+import { formatTime } from "../../types/attendance";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
 
 // ── Helpers ───────────────────────────────────────────────────────
 function getInitials(name: string) {
@@ -27,11 +22,6 @@ function getInitials(name: string) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-}
-
-function formatTime(iso: string | null) {
-  if (!iso) return "--:--";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function toDateString(d: Date) {
@@ -57,25 +47,8 @@ function AttendanceBadge({ status }: { status: string }) {
   );
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────
-function SkeletonCard() {
-  return (
-    <div className="animate-pulse rounded-3xl border border-gray-100 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex items-center gap-3">
-        <div className="h-11 w-11 rounded-2xl bg-gray-200 dark:bg-gray-700" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3 w-32 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-2.5 w-20 rounded-full bg-gray-100 dark:bg-gray-800" />
-        </div>
-        <div className="h-7 w-16 rounded-xl bg-gray-100 dark:bg-gray-800" />
-      </div>
-      <div className="mt-4 h-14 rounded-2xl bg-gray-50 dark:bg-gray-800/50" />
-    </div>
-  );
-}
-
 // ── Mobile Card ───────────────────────────────────────────────────
-function RosterCard({ item }: { item: AttendanceRosterItem }) {
+function RosterCard({ item }: { item: any }) {
   const initials = getInitials(item.fullName);
 
   const avatarColor: Record<string, string> = {
@@ -96,11 +69,8 @@ function RosterCard({ item }: { item: AttendanceRosterItem }) {
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-150 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
-      {/* Status accent strip */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${strip}`} />
-
       <div className="flex flex-col gap-3.5 p-5 pl-6">
-        {/* Top row: Avatar + Name + Badge */}
         <div className="flex items-center gap-3">
           <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${avatarCls}`}>
             {initials}
@@ -111,8 +81,6 @@ function RosterCard({ item }: { item: AttendanceRosterItem }) {
           </div>
           <AttendanceBadge status={item.attendanceStatus} />
         </div>
-
-        {/* Bottom row: Punch times */}
         <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/40">
           <Clock className="h-4 w-4 shrink-0 text-gray-400" />
           <div className="min-w-0 flex-1">
@@ -135,392 +103,307 @@ function RosterCard({ item }: { item: AttendanceRosterItem }) {
   );
 }
 
+// ── Smart Filter Pill ─────────────────────────────────────────────
+function SmartFilterPill({ 
+  label, 
+  active, 
+  onClick, 
+  count 
+}: { 
+  label: string; 
+  active: boolean; 
+  onClick: () => void;
+  count?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
+        active 
+          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none" 
+          : "bg-white text-gray-500 ring-1 ring-inset ring-gray-100 hover:ring-indigo-200 dark:bg-gray-900 dark:text-gray-400 dark:ring-gray-800"
+      }`}
+    >
+      {label}
+      {count !== undefined && count > 0 && (
+        <span className={`flex h-5 min-w-[20px] items-center justify-center rounded-lg px-1 text-[10px] ${
+          active ? "bg-white/20 text-white" : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50"
+        }`}>
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────
 export default function DailyRoster() {
-  const [roster, setRoster] = useState<AttendanceRosterItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState<string>("ALL");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedShiftId, setSelectedShiftId] = useState<number | "ALL">("ALL");
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const [smartFilter, setSmartFilter] = useState<"ALL" | "LATE" | "OVERTIME" | "MISPUNCH" | "WEEKEND">("ALL");
   const pageSize = 50;
 
-  const { pushToast } = useAppToast();
+  const { data: shiftsData } = useShifts();
+  const shifts = shiftsData || [];
 
-  useEffect(() => {
-    setCurrentPage(0);
-    fetchRoster(0);
-  }, [selectedDate]);
+  const { 
+    data: rosterData, 
+    isLoading, 
+    refetch 
+  } = useDailyRosterLogs(
+    toDateString(selectedDate),
+    currentPage,
+    pageSize,
+    selectedShiftId
+  );
 
-  useEffect(() => {
-    fetchRoster(currentPage);
-  }, [currentPage]);
+  const roster = rosterData?.content || [];
+  const totalPages = rosterData?.totalPages || 0;
+  const totalElements = rosterData?.totalElements || 0;
 
-  const fetchRoster = async (page = 0) => {
-    setLoading(true);
-    try {
-      const today = toDateString(selectedDate);
-      const response = await api.get(`/api/v1/attendance/roster?date=${today}&page=${page}&size=${pageSize}`);
-      setRoster(response.data.content);
-      setTotalPages(response.data.totalPages);
-      setTotalElements(response.data.totalElements);
-    } catch (error) {
-      pushToast({ title: "Fetch Error", message: "Failed to load team roster", tone: "error" });
-      setRoster([]);
-      setTotalPages(0);
-      setTotalElements(0);
-    } finally {
-      setLoading(false);
+  // ── Smart Filter Logic ──────────────────────────────────────────
+  const filteredRoster = useMemo(() => {
+    let list = roster;
+    
+    // Search
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      list = list.filter(r => r.fullName.toLowerCase().includes(s) || r.employeeCode.toLowerCase().includes(s));
     }
-  };
+
+    // Smart Filters
+    if (smartFilter === "LATE") {
+      list = list.filter(r => r.attendanceStatus === "LATE");
+    } else if (smartFilter === "OVERTIME") {
+      list = list.filter(r => r.overtime === true);
+    } else if (smartFilter === "MISPUNCH") {
+      list = list.filter(r => (r.punchInTime && !r.punchOutTime) || (!r.punchInTime && r.punchOutTime));
+    } else if (smartFilter === "WEEKEND") {
+      list = list.filter(r => r.attendanceStatus === "WEEKEND_WORK");
+    }
+
+    return list;
+  }, [roster, searchTerm, smartFilter]);
+
+  // Counts for smart filter pills (of current page/shift)
+  const smartCounts = useMemo(() => ({
+    late: roster.filter(r => r.attendanceStatus === "LATE").length,
+    overtime: roster.filter(r => r.overtime === true).length,
+    mispunch: roster.filter(r => (r.punchInTime && !r.punchOutTime) || (!r.punchInTime && r.punchOutTime)).length,
+    weekend: roster.filter(r => r.attendanceStatus === "WEEKEND_WORK").length,
+  }), [roster]);
 
   const shiftDate = (days: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + days);
     setSelectedDate(d);
+    setCurrentPage(0);
   };
 
   const isToday = toDateString(selectedDate) === toDateString(new Date());
 
-  const filteredRoster = roster.filter((item) => {
-    const matchesSearch =
-      item.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.employeeCode.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === "ALL" || item.attendanceStatus === filter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const stats = {
-    total: roster?.length || 0,
-    present: roster?.filter((r) => r.attendanceStatus === "PRESENT").length || 0,
-    late: roster?.filter((r) => r.attendanceStatus === "LATE").length || 0,
-    absent: roster?.filter((r) => r.attendanceStatus === "ABSENT").length || 0,
-  };
-
-  const FILTERS = ["ALL", "PRESENT", "LATE", "ABSENT", "ON_LEAVE"] as const;
-
-  const filterLabel: Record<string, string> = {
-    ALL: "All",
-    PRESENT: "Present",
-    LATE: "Late",
-    ABSENT: "Absent",
-    ON_LEAVE: "On Leave",
-  };
-
   return (
-    <div className="mx-auto w-full max-w-6xl overflow-hidden space-y-6 px-4 sm:px-6 md:px-8">
-
-      {/* ═══════════════════════════════════════════════════════════
-          MISSION 1 — DATE NAVIGATOR HERO
-      ═══════════════════════════════════════════════════════════ */}
-      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 p-6 shadow-xl shadow-slate-900/30 md:p-8">
-        <div className="flex flex-col gap-6">
-          {/* Top: Icon + Title */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                  Attendance
-                </p>
-                <h1 className="text-xl font-black tracking-tight text-white md:text-2xl">
-                  Daily Roster
-                </h1>
-              </div>
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-20 sm:px-6 md:px-8">
+      
+      {/* ── Compact Header ── */}
+      <div className="flex flex-col gap-6 rounded-[2.5rem] bg-slate-900 p-8 shadow-2xl shadow-slate-200 dark:shadow-none">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-indigo-500 shadow-lg shadow-indigo-500/20">
+              <Users className="h-7 w-7 text-white" />
             </div>
-
-            <button
-              onClick={() => fetchRoster()}
-              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 transition-all hover:bg-white/20 active:scale-95"
-              title="Refresh"
-            >
-              <RefreshCw className={`h-4 w-4 text-white ${loading ? "animate-spin" : ""}`} />
-            </button>
-          </div>
-
-          {/* Date Navigator */}
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={() => shiftDate(-1)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 transition-all hover:bg-white/20 active:scale-95"
-            >
-              <ChevronLeft className="h-5 w-5 text-white" />
-            </button>
-
-            <div className="flex flex-1 flex-col items-center">
-              <p className="text-2xl font-black tracking-tight text-white md:text-3xl">
-                {selectedDate.toLocaleDateString(undefined, { weekday: "short", month: "long", day: "numeric" })}
-              </p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-400">
-                  {selectedDate.getFullYear()}
-                </span>
-                {isToday && (
-                  <span className="rounded-lg bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-emerald-500/30">
-                    Today
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => shiftDate(1)}
-              disabled={isToday}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 transition-all hover:bg-white/20 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <ChevronRight className="h-5 w-5 text-white" />
-            </button>
-          </div>
-
-          {/* Stat pills */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col items-center rounded-2xl bg-emerald-500/15 py-3 ring-1 ring-emerald-500/25">
-              <span className="text-2xl font-black tabular-nums text-emerald-400">{stats.present}</span>
-              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-emerald-500/70">Present</span>
-            </div>
-            <div className="flex flex-col items-center rounded-2xl bg-amber-500/15 py-3 ring-1 ring-amber-500/25">
-              <span className="text-2xl font-black tabular-nums text-amber-400">{stats.late}</span>
-              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-500/70">Late</span>
-            </div>
-            <div className="flex flex-col items-center rounded-2xl bg-rose-500/15 py-3 ring-1 ring-rose-500/25">
-              <span className="text-2xl font-black tabular-nums text-rose-400">{stats.absent}</span>
-              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-rose-500/70">Absent</span>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white">Daily Roster</h1>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Team Visibility</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          SEARCH + FILTER BAR
-      ═══════════════════════════════════════════════════════════ */}
-      <div className="flex flex-col gap-3">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name or employee code…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-2xl border border-gray-100 bg-white py-3 pl-11 pr-4 text-sm font-medium placeholder-gray-400 transition-all focus:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:placeholder-gray-600"
-          />
-        </div>
-
-        {/* Filter tabs — scrollable on mobile */}
-        <div className="w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex min-w-max gap-2 rounded-2xl bg-gray-100/80 p-1.5 dark:bg-gray-900/60">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`
-                  flex min-h-[44px] min-w-[44px] items-center justify-center whitespace-nowrap rounded-xl px-4 text-xs font-bold transition-all duration-150
-                  ${filter === f
-                    ? "bg-white text-indigo-600 shadow-sm dark:bg-gray-800 dark:text-indigo-400"
-                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                  }
-                `}
+          {/* Compact Date Picker Trigger */}
+          <div className="relative">
+            <div className="flex items-center gap-2 rounded-2xl bg-white/10 p-1.5 ring-1 ring-white/10">
+              <button 
+                onClick={() => shiftDate(-1)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-white/10 text-white"
               >
-                {filterLabel[f]}
+                <ChevronLeft className="h-5 w-5" />
               </button>
-            ))}
+              
+              <button 
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                className="flex items-center gap-2.5 px-3 py-1.5 text-sm font-black text-white hover:bg-white/5 rounded-xl transition-all"
+              >
+                <CalendarDays className="h-4 w-4 text-indigo-400" />
+                {selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                {isToday && <span className="ml-1 rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-400">Today</span>}
+              </button>
+
+              <button 
+                onClick={() => shiftDate(1)}
+                disabled={isToday}
+                className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-white/10 text-white disabled:opacity-20"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Floating Calendar Popover */}
+            {showDatePicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
+                <div className="absolute right-0 top-full z-50 mt-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="rounded-[2rem] bg-white p-2 shadow-2xl ring-1 ring-gray-100 dark:bg-gray-900 dark:ring-gray-800">
+                    <Calendar 
+                      onChange={(d) => {
+                        setSelectedDate(d as Date);
+                        setShowDatePicker(false);
+                        setCurrentPage(0);
+                      }} 
+                      value={selectedDate}
+                      maxDate={new Date()}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Search & Shift Bar */}
+        <div className="flex flex-col gap-3 md:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input 
+              type="text"
+              placeholder="Quick search name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-2xl bg-white/5 py-3.5 pl-11 pr-4 text-sm font-medium text-white placeholder-slate-500 outline-none ring-1 ring-white/10 focus:ring-indigo-500/50"
+            />
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-2 ring-1 ring-white/10">
+            <Filter className="h-4 w-4 text-slate-500" />
+            <select
+              value={selectedShiftId}
+              onChange={(e) => {
+                setSelectedShiftId(e.target.value === "ALL" ? "ALL" : Number(e.target.value));
+                setCurrentPage(0);
+              }}
+              className="bg-transparent text-sm font-black text-white outline-none"
+            >
+              <option value="ALL" className="text-black">All Shifts</option>
+              {shifts.map(s => <option key={s.id} value={s.id} className="text-black">{s.shiftName}</option>)}
+            </select>
           </div>
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          SECTION LABEL
-      ═══════════════════════════════════════════════════════════ */}
-      {!loading && filteredRoster.length > 0 && (
-        <div className="flex items-center gap-2 px-1">
-          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-400">
-            {filteredRoster.length} {filteredRoster.length === 1 ? "Employee" : "Employees"}
-          </p>
-          <div className="h-px flex-1 bg-gray-100 dark:bg-gray-800" />
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════
-          MISSION 2 — MOBILE CARDS (md:hidden)
-      ═══════════════════════════════════════════════════════════ */}
-      <div className="md:hidden">
-        {loading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : filteredRoster.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-200 bg-gray-50/50 py-20 text-center dark:border-gray-800 dark:bg-gray-900/30">
-            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-gray-300 dark:text-gray-700" />
-            <p className="text-base font-bold text-gray-700 dark:text-gray-300">No records found</p>
-            <p className="mt-1 text-sm text-gray-400">Try adjusting your search or filters.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredRoster.map((item) => (
-              <RosterCard key={item.id} item={item} />
-            ))}
-          </div>
-        )}
+      {/* ── Smart Filters ── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <SmartFilterPill label="All" active={smartFilter === "ALL"} onClick={() => setSmartFilter("ALL")} />
+        <SmartFilterPill label="Late" active={smartFilter === "LATE"} onClick={() => setSmartFilter("LATE")} count={smartCounts.late} />
+        <SmartFilterPill label="Overtime" active={smartFilter === "OVERTIME"} onClick={() => setSmartFilter("OVERTIME")} count={smartCounts.overtime} />
+        <SmartFilterPill label="Mis-punches" active={smartFilter === "MISPUNCH"} onClick={() => setSmartFilter("MISPUNCH")} count={smartCounts.mispunch} />
+        <SmartFilterPill label="Weekend" active={smartFilter === "WEEKEND"} onClick={() => setSmartFilter("WEEKEND")} count={smartCounts.weekend} />
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          MISSION 3 — DESKTOP DATA GRID (hidden md:block)
-      ═══════════════════════════════════════════════════════════ */}
-      <div className="hidden md:block overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="h-9 w-9 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-            <p className="mt-4 text-[11px] font-black uppercase tracking-widest text-gray-400">Syncing Roster…</p>
+      {/* ── Table / Grid ── */}
+      <div className="rounded-[2.5rem] border border-gray-100 bg-white p-2 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-32">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Synchronizing Roster...</p>
           </div>
         ) : filteredRoster.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-gray-300" />
-            <p className="text-lg font-bold text-gray-700 dark:text-gray-300">No records found</p>
-            <p className="mt-1 text-sm text-gray-400">Try adjusting your search or filters.</p>
+          <div className="flex flex-col items-center justify-center py-32 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 text-gray-300 dark:bg-gray-800 dark:text-gray-600">
+              <Search className="h-8 w-8" />
+            </div>
+            <h3 className="mt-4 text-lg font-black text-gray-900 dark:text-white">No results found</h3>
+            <p className="text-sm text-gray-500">Try adjusting your filters or search terms.</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="px-7 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  Employee
-                </th>
-                <th className="px-7 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  Status
-                </th>
-                <th className="px-7 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  Punch In
-                </th>
-                <th className="px-7 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  Punch Out
-                </th>
-                <th className="px-7 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
-                  Verification
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-              {filteredRoster.map((item) => {
-                const initials = getInitials(item.fullName);
-                const avatarColor: Record<string, string> = {
-                  PRESENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-                  LATE: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
-                  ABSENT: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
-                  ON_LEAVE: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
-                };
-                const avatarCls = avatarColor[item.attendanceStatus] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
-
-                return (
-                  <tr
-                    key={item.id}
-                    className="group transition-colors duration-100 hover:bg-gray-50/70 dark:hover:bg-white/[0.03]"
-                  >
-                    {/* Employee */}
-                    <td className="px-7 py-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xs font-black transition-all ${avatarCls}`}>
-                          {initials}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-gray-900 dark:text-white">
-                            {item.fullName}
-                          </p>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/70">
-                            {item.employeeCode}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-7 py-4">
-                      <AttendanceBadge status={item.attendanceStatus} />
-                    </td>
-
-                    {/* Punch In */}
-                    <td className="px-7 py-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <span className="text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-300">
-                          {formatTime(item.punchInTime)}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Punch Out */}
-                    <td className="px-7 py-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <span className="text-sm font-semibold tabular-nums text-gray-700 dark:text-gray-300">
-                          {formatTime(item.punchOutTime)}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Verification */}
-                    <td className="px-7 py-4">
-                      <div className="flex items-center gap-1.5 rounded-xl bg-emerald-50 px-2.5 py-1.5 w-fit dark:bg-emerald-950/30">
-                        <Wifi className="h-3 w-3 text-emerald-500" />
-                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                          Office Wifi
-                        </span>
-                      </div>
-                    </td>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-50 dark:border-gray-800">
+                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Employee</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">In / Out</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Overtime</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Source</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                  {filteredRoster.map((item) => (
+                    <tr key={item.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-all">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-[11px] font-black text-indigo-600 dark:bg-indigo-950/40">
+                            {getInitials(item.fullName)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-gray-900 dark:text-white">{item.fullName}</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.employeeCode}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4"><AttendanceBadge status={item.attendanceStatus} /></td>
+                      <td className="px-6 py-4 font-black tabular-nums text-gray-700 dark:text-gray-300 text-sm">
+                        {formatTime(item.punchInTime)} <span className="mx-1 text-gray-300">→</span> {formatTime(item.punchOutTime)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {item.overtime ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 px-2 py-1 text-[10px] font-black text-purple-600 dark:bg-purple-950/40">
+                            <Sparkles className="h-3 w-3" />
+                            {item.overtimeMinutes}m
+                          </span>
+                        ) : <span className="text-gray-300 dark:text-gray-700">—</span>}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                          <Wifi className="h-3.5 w-3.5" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Office</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Table footer */}
-        {!loading && roster.length > 0 && (
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-50 px-7 py-4 dark:border-gray-800 sm:flex-row">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-              Page {currentPage + 1} of {totalPages} ({totalElements} total records)
-            </p>
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3 p-2">
+              {filteredRoster.map(item => <RosterCard key={item.id} item={item} />)}
+            </div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
+            {/* Pagination Footer */}
+            <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-50 px-6 py-4 dark:border-gray-800 sm:flex-row">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                Page {currentPage + 1} of {totalPages} ({totalElements} Records)
+              </p>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                <button 
                   disabled={currentPage === 0}
-                  className="flex h-8 items-center justify-center rounded-xl border border-gray-100 bg-white px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 transition-all hover:border-gray-200 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed dark:border-gray-800 dark:bg-gray-900"
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="rounded-xl border border-gray-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 disabled:opacity-30 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400"
                 >
                   Prev
                 </button>
-                
-                <div className="flex items-center gap-1">
-                  {[...Array(Math.min(5, totalPages))].map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i)}
-                      className={`h-7 w-7 rounded-lg text-[10px] font-black transition-all ${
-                        currentPage === i
-                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                          : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                <button 
                   disabled={currentPage >= totalPages - 1}
-                  className="flex h-8 items-center justify-center rounded-xl border border-gray-100 bg-white px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 transition-all hover:border-gray-200 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed dark:border-gray-800 dark:bg-gray-900"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="rounded-xl border border-gray-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 disabled:opacity-30 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400"
                 >
                   Next
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>

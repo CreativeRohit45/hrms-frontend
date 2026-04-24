@@ -7,8 +7,11 @@ import type { PageResponse } from "../types/common";
  * GET /api/v1/attendance/inbox
  * Returns a paginated list of attendance-related requests (corrections, overtime, etc.).
  */
-export async function getUnifiedInbox(page = 0, size = 50): Promise<PageResponse<any>> {
-  const response = await apiClient.get<PageResponse<any>>(`/api/v1/attendance/inbox?page=${page}&size=${size}`);
+export async function getUnifiedInbox(page = 0, size = 50, status?: string): Promise<PageResponse<any>> {
+  const url = status 
+    ? `/api/v1/attendance/inbox?page=${page}&size=${size}&status=${status}`
+    : `/api/v1/attendance/inbox?page=${page}&size=${size}`;
+  const response = await apiClient.get<PageResponse<any>>(url);
   return response.data;
 }
 
@@ -44,10 +47,17 @@ export async function getEmployeeLogs(employeeCode: string): Promise<AttendanceL
  * GET /api/v1/attendance/roster
  * Returns all attendance logs for a specific date (Manager/Admin use).
  */
-export async function getDailyAttendanceLogs(date: string): Promise<AttendanceLogResponse[]> {
-  const response = await apiClient.get<AttendanceLogResponse[]>(
-    `/api/v1/attendance/roster?date=${date}`
-  );
+export async function getDailyAttendanceLogs(
+  date: string,
+  page = 0,
+  size = 50,
+  shiftId?: number | string
+): Promise<PageResponse<AttendanceLogResponse>> {
+  let url = `/api/v1/attendance/roster?date=${date}&page=${page}&size=${size}`;
+  if (shiftId && shiftId !== "ALL") {
+    url += `&shiftId=${shiftId}`;
+  }
+  const response = await apiClient.get<PageResponse<AttendanceLogResponse>>(url);
   return response.data;
 }
 
@@ -126,6 +136,16 @@ export async function rejectCorrection(logId: number, reason: string): Promise<A
 export async function approveOvertime(logId: number): Promise<AttendanceLogResponse> {
   const response = await apiClient.put<AttendanceLogResponse>(
     `/api/v1/attendance/${logId}/approve-overtime`
+  );
+  return response.data;
+}
+
+/**
+ * PUT /api/v1/attendance/{logId}/reject-overtime
+ */
+export async function rejectOvertime(logId: number): Promise<AttendanceLogResponse> {
+  const response = await apiClient.put<AttendanceLogResponse>(
+    `/api/v1/attendance/${logId}/reject-overtime`
   );
   return response.data;
 }

@@ -10,7 +10,7 @@ import { queryClient } from '../../lib/queryClient';
 import {
   getMyAttendanceLogs, getEmployeeLogs, getDailyAttendanceLogs,
   requestCorrection, approveCorrection, rejectCorrection, approveOvertime,
-  getUnifiedInbox,
+  rejectOvertime, getUnifiedInbox,
 } from '../../api/attendance';
 import { getDashboardStats, getEmployeeDashboardStats } from '../../api/dashboard';
 import type { AttendanceLogResponse } from '../../types/attendance';
@@ -32,11 +32,17 @@ export function useEmployeeLogs(employeeCode: string, enabled: boolean) {
   });
 }
 
-export function useDailyRosterLogs(date: string, enabled: boolean) {
-  return useQuery<AttendanceLogResponse[]>({
-    queryKey: queryKeys.attendance.roster(date),
-    queryFn: () => getDailyAttendanceLogs(date),
-    enabled,
+export function useDailyRosterLogs(
+  date: string,
+  page = 0,
+  size = 50,
+  shiftId?: number | string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: [...queryKeys.attendance.roster(date), page, size, shiftId],
+    queryFn: () => getDailyAttendanceLogs(date, page, size, shiftId),
+    enabled: enabled && !!date,
   });
 }
 
@@ -50,10 +56,10 @@ export function useAttendanceDashboardStats(employeeCode: string) {
   });
 }
 
-export function useUnifiedInbox() {
+export function useUnifiedInbox(status?: string) {
   return useInfiniteQuery({
-    queryKey: ['attendance', 'inbox'],
-    queryFn: ({ pageParam = 0 }) => getUnifiedInbox(pageParam, 20),
+    queryKey: ['attendance', 'inbox', status],
+    queryFn: ({ pageParam = 0 }) => getUnifiedInbox(pageParam, 20, status),
     getNextPageParam: (lastPage) => {
       const next = lastPage.number + 1;
       return next < lastPage.totalPages ? next : undefined;
@@ -116,6 +122,15 @@ export function useRejectCorrection(employeeCode?: string) {
 export function useApproveOvertimeMutation(employeeCode: string) {
   return useMutation({
     mutationFn: (logId: number) => approveOvertime(logId),
+    onSuccess: () => {
+      invalidateAttendanceEcosystem(employeeCode);
+    },
+  });
+}
+
+export function useRejectOvertimeMutation(employeeCode: string) {
+  return useMutation({
+    mutationFn: (logId: number) => rejectOvertime(logId),
     onSuccess: () => {
       invalidateAttendanceEcosystem(employeeCode);
     },

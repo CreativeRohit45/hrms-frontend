@@ -13,7 +13,7 @@ import {
   applyForLeave, cancelLeave, approveLeave, rejectLeave,
   revokeLeave, grantLeave, getMyAuditTrail, overrideBalance,
   adminGetAllLeaveTypes, adminCreateLeaveType, adminUpdateLeaveType, adminDeleteLeaveType,
-  previewLeave
+  previewLeave, runManualAccrual
 } from '../../api/leaves';
 import type {
   LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
@@ -172,6 +172,16 @@ export function useUpdateLeaveType() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
+    },
+  });
+}
+
+export function useRunAccrual() {
+  return useMutation({
+    mutationFn: runManualAccrual,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
+      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'balances'] });
     },
   });
 }

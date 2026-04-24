@@ -23,7 +23,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { AppModal } from "../../components/ui/AppModal";
 
 // ── TanStack Query hooks (parallel fetching) ──────────────────────
-import { useMyLeaves, useLeaveTypes, useApplyLeave, useLeavePreview } from "../../hooks/queries/useLeaves";
+import { useMyLeaves, useLeaveTypes, useApplyLeave, useLeavePreview, useRevokeLeave } from "../../hooks/queries/useLeaves";
 import { useMyGatepasses, useApplyGatepass } from "../../hooks/queries/useGatepasses";
 import { useDashboardStats } from "../../hooks/queries/useDashboard";
 
@@ -434,7 +434,6 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
     </div>
   );
 }
-
 function RequestDetailsModal({
   request,
   onClose,
@@ -442,9 +441,21 @@ function RequestDetailsModal({
   request: Request;
   onClose: () => void;
 }) {
+  const { pushToast } = useAppToast();
+  const revokeMutation = useRevokeLeave();
   const isLeave = request.type === "LEAVE";
   const cfg = statusConfig[request.status] ?? statusConfig["PENDING"];
   const m = request.metadata ?? {};
+
+  const handleRevoke = async () => {
+    try {
+      await revokeMutation.mutateAsync({ leaveId: request.id, reason: "Revoked by user" });
+      pushToast({ title: "Success", message: "Leave request revoked.", tone: "success" });
+      onClose();
+    } catch (err: any) {
+      pushToast({ title: "Error", message: err.response?.data?.message || "Failed to revoke", tone: "error" });
+    }
+  };
 
   return (
     <AppModal
@@ -575,14 +586,26 @@ function RequestDetailsModal({
           </div>
         )}
 
-        {/* ── Close CTA ────────────────────────────────────────── */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full min-h-[48px] rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-500 transition-all hover:border-gray-300 hover:text-gray-700 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          Close
-        </button>
+        {/* ── Actions ────────────────────────────────────────── */}
+        <div className="flex flex-col gap-3">
+          {request.status === "APPROVED" && isLeave && (
+            <button
+              type="button"
+              disabled={revokeMutation.isPending}
+              onClick={handleRevoke}
+              className="w-full min-h-[48px] rounded-2xl border border-rose-200 bg-rose-50 py-3 text-sm font-black text-rose-600 transition-all hover:bg-rose-600 hover:text-white disabled:opacity-50 dark:border-rose-900/50 dark:bg-rose-950/20"
+            >
+              {revokeMutation.isPending ? "Revoking..." : "Revoke Request"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full min-h-[48px] rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-500 transition-all hover:border-gray-300 hover:text-gray-700 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </AppModal>
   );

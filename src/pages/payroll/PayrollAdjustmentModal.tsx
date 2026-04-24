@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { 
-  X, Plus, Trash2, AlertTriangle, 
-  IndianRupee, Info, CheckCircle2, Save, Lock
+  X, Plus, AlertTriangle, 
+  IndianRupee, Info, Save, Lock
 } from "lucide-react";
-import { addAdjustment, deleteAdjustment } from "../../api/payroll";
+import { addAdjustment } from "../../api/payroll";
 import type { PayslipResponse, AdjustmentType } from "../../types/payroll";
 
 interface Props {
@@ -58,15 +58,6 @@ export default function PayrollAdjustmentModal({ isOpen, onClose, record, onSucc
     }
   };
 
-  const handleDelete = async (adjustmentId: number) => {
-    if (!window.confirm("Are you sure you want to remove this adjustment? (It will be soft-deleted and net pay will revert)")) return;
-    try {
-      await deleteAdjustment(adjustmentId);
-      onSuccess();
-    } catch (error) {
-      console.error("Failed to delete adjustment", error);
-    }
-  };
 
   if (!isOpen) return null;
 
