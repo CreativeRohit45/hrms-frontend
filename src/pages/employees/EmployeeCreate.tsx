@@ -8,6 +8,7 @@ import {
   type EmployeeFormState,
 } from "../../types/employee";
 import { DatePickerField } from "../../components/ui/DatePickerField";
+import { SelectField } from "../../components/ui/SelectField";
 import { getShifts, getDepartments, getLocations, type Shift, type Department, type CompanyLocation } from "../../api/settings";
 import { getLeaveTypes } from "../../api/leaves";
 import type { LeaveTypeDTO } from "../../types/leave";
@@ -166,31 +167,37 @@ export default function EmployeeCreate({
                 <input name="designation" value={form.designation} onChange={handleChange} className="input-base" required placeholder="e.g. Software Engineer"/>
               </div>
               <div>
-                <label className={labelCls}>Department *</label>
-                <select name="departmentId" value={form.departmentId} onChange={handleChange} className="input-base" required>
-                  <option value="" disabled>{loadingOptions ? "Loading..." : "— Select Department —"}</option>
-                  {depts.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label="Department *"
+                  name="departmentId"
+                  value={form.departmentId}
+                  onChange={(v) => setForm(p => ({ ...p, departmentId: v }))}
+                  required
+                  placeholder={loadingOptions ? "Loading..." : "— Select Department —"}
+                  options={depts.map(o => ({ label: o.name, value: String(o.id) }))}
+                />
               </div>
               <div>
-                <label className={labelCls}>Shift *</label>
-                <select name="shiftId" value={form.shiftId} onChange={handleChange} className="input-base" required>
-                  <option value="" disabled>{loadingOptions ? "Loading..." : "— Select Shift —"}</option>
-                  {shifts.map((o) => (
-                    <option key={o.id} value={o.id}>{o.shiftName}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label="Shift *"
+                  name="shiftId"
+                  value={form.shiftId}
+                  onChange={(v) => setForm(p => ({ ...p, shiftId: v }))}
+                  required
+                  placeholder={loadingOptions ? "Loading..." : "— Select Shift —"}
+                  options={shifts.map(o => ({ label: o.shiftName, value: String(o.id) }))}
+                />
               </div>
               <div className="md:col-span-2">
-                <label className={labelCls}>Location *</label>
-                <select name="locationId" value={form.locationId} onChange={handleChange} className="input-base" required>
-                  <option value="" disabled>{loadingOptions ? "Loading..." : "— Select Location —"}</option>
-                  {locs.map((o) => (
-                    <option key={o.id} value={o.id}>{o.locationName}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label="Location *"
+                  name="locationId"
+                  value={form.locationId}
+                  onChange={(v) => setForm(p => ({ ...p, locationId: v }))}
+                  required
+                  placeholder={loadingOptions ? "Loading..." : "— Select Location —"}
+                  options={locs.map(o => ({ label: o.locationName, value: String(o.id) }))}
+                />
               </div>
             </div>
           </div>
@@ -202,22 +209,26 @@ export default function EmployeeCreate({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
               <div>
-                <label className={labelCls}>System Role *</label>
-                <select name="role" value={form.role} onChange={handleChange} className="input-base" required>
-                  <option value="">— Select Role —</option>
-                  {ROLE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label="System Role *"
+                  name="role"
+                  value={form.role}
+                  onChange={(v) => setForm(p => ({ ...p, role: v as EmployeeFormState['role'] }))}
+                  required
+                  placeholder="— Select Role —"
+                  options={ROLE_OPTIONS.map(o => ({ label: o.label, value: o.value }))}
+                />
               </div>
               <div>
-                <label className={labelCls}>Payment Type *</label>
-                <select name="paymentType" value={form.paymentType} onChange={handleChange} className="input-base" required>
-                  <option value="">— Select Type —</option>
-                  {PAYMENT_TYPE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label="Payment Type *"
+                  name="paymentType"
+                  value={form.paymentType}
+                  onChange={(v) => setForm(p => ({ ...p, paymentType: v as EmployeeFormState['paymentType'] }))}
+                  required
+                  placeholder="— Select Type —"
+                  options={PAYMENT_TYPE_OPTIONS.map(o => ({ label: o.label, value: o.value }))}
+                />
               </div>
               <div>
                 <label className={labelCls}>Hourly Rate (₹) *</label>

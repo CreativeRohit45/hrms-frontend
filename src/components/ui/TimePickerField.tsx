@@ -33,6 +33,16 @@ export function to24hString(parts: TimeParts) {
   return `${String(hour24).padStart(2, "0")}:${parts.m.padStart(2, "0")}:00`;
 }
 
+const HOURS = Array.from({ length: 12 }, (_, i) => ({
+  label: String(i + 1).padStart(2, "0"),
+  value: String(i + 1).padStart(2, "0"),
+}));
+
+const MINUTES = Array.from({ length: 60 }, (_, i) => ({
+  label: String(i).padStart(2, "0"),
+  value: String(i).padStart(2, "0"),
+}));
+
 interface TimePickerFieldProps {
   label?: string;
   parts: TimeParts;
@@ -42,37 +52,62 @@ interface TimePickerFieldProps {
 export function TimePickerField({ label, parts, setter }: TimePickerFieldProps) {
   return (
     <div className="w-full space-y-1.5">
-      {label && <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</label>}
-      <div className="flex w-full gap-2">
+      {label && (
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400">
+          {label}
+        </label>
+      )}
+      <div className="flex w-full items-center gap-2">
+        {/* Hour */}
         <div className="relative flex-1">
           <select
             value={parts.h}
             onChange={(e) => setter({ ...parts, h: e.target.value })}
-            className="w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+            className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 pr-8 text-sm font-semibold text-gray-800 outline-none transition-all hover:border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200"
           >
-            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map((hour) => (
-              <option key={hour} value={hour}>{hour}</option>
+            {HOURS.map((h) => (
+              <option key={h.value} value={h.value} className="dark:bg-gray-900">
+                {h.label}
+              </option>
             ))}
           </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+          </svg>
         </div>
+
+        <span className="text-lg font-black text-gray-300 dark:text-gray-600">:</span>
+
+        {/* Minute */}
         <div className="relative flex-1">
           <select
             value={parts.m}
             onChange={(e) => setter({ ...parts, m: e.target.value })}
-            className="w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+            className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 pr-8 text-sm font-semibold text-gray-800 outline-none transition-all hover:border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200"
           >
-            {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0")).map((minute) => (
-              <option key={minute} value={minute}>{minute}</option>
+            {MINUTES.map((m) => (
+              <option key={m.value} value={m.value} className="dark:bg-gray-900">
+                {m.label}
+              </option>
             ))}
           </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+          </svg>
         </div>
-        <div className="flex rounded-2xl border border-gray-100 bg-gray-100 p-1 dark:border-gray-800 dark:bg-gray-800">
+
+        {/* AM/PM toggle */}
+        <div className="flex h-12 items-center rounded-2xl border border-gray-100 bg-gray-100 p-1 dark:border-gray-800 dark:bg-gray-800">
           {(["AM", "PM"] as const).map((period) => (
             <button
               key={period}
               type="button"
               onClick={() => setter({ ...parts, p: period })}
-              className={`rounded-xl px-3 text-[11px] font-bold transition-all ${parts.p === period ? "bg-indigo-600 text-white shadow-sm" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+              className={`flex h-10 items-center justify-center rounded-xl px-3.5 text-[11px] font-bold transition-all ${
+                parts.p === period
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
             >
               {period}
             </button>

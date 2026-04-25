@@ -3,13 +3,13 @@ import {
   Users, Search,
   Clock,
   ChevronLeft, ChevronRight,
-  Wifi, CalendarDays, Filter, Sparkles
+  Wifi, CalendarDays, Sparkles
 } from "lucide-react";
 import { useDailyRosterLogs } from "../../hooks/queries/useAttendance";
 import { useShifts } from "../../hooks/queries/useSettings";
 import { formatTime } from "../../types/attendance";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
+import { SelectField } from "../../components/ui/SelectField";
+import { DatePickerField } from "../../components/ui/DatePickerField";
 
 // ── Helpers ───────────────────────────────────────────────────────
 function getInitials(name: string) {
@@ -24,7 +24,10 @@ function getInitials(name: string) {
 }
 
 function toDateString(d: Date) {
-  return d.toISOString().split("T")[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 // ── Status Badge (Premium Soft) ───────────────────────────────────
@@ -137,13 +140,14 @@ function SmartFilterPill({
 
 // ── Main Component ────────────────────────────────────────────────
 export default function DailyRoster() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(toDateString(new Date()));
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedShiftId, setSelectedShiftId] = useState<number | "ALL">("ALL");
   const [currentPage, setCurrentPage] = useState(0);
   const [smartFilter, setSmartFilter] = useState<"ALL" | "LATE" | "OVERTIME" | "MISPUNCH" | "WEEKEND">("ALL");
   const pageSize = 50;
+
+
 
   const { data: shiftsData } = useShifts();
   const shifts = shiftsData || [];
@@ -152,7 +156,7 @@ export default function DailyRoster() {
     data: rosterData, 
     isLoading 
   } = useDailyRosterLogs(
-    toDateString(selectedDate),
+    selectedDateStr,
     currentPage,
     pageSize,
     selectedShiftId
@@ -195,13 +199,13 @@ export default function DailyRoster() {
   }), [roster]);
 
   const shiftDate = (days: number) => {
-    const d = new Date(selectedDate);
+    const d = new Date(`${selectedDateStr}T00:00:00`);
     d.setDate(d.getDate() + days);
-    setSelectedDate(d);
+    setSelectedDateStr(toDateString(d));
     setCurrentPage(0);
   };
 
-  const isToday = toDateString(selectedDate) === toDateString(new Date());
+  const isToday = selectedDateStr === toDateString(new Date());
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-20 sm:px-6 md:px-8">
@@ -219,53 +223,32 @@ export default function DailyRoster() {
             </div>
           </div>
 
-          {/* Compact Date Picker Trigger */}
-          <div className="relative">
-            <div className="flex items-center gap-2 rounded-2xl bg-white/10 p-1.5 ring-1 ring-white/10">
-              <button 
-                onClick={() => shiftDate(-1)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-white/10 text-white"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              
-              <button 
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                className="flex items-center gap-2.5 px-3 py-1.5 text-sm font-black text-white hover:bg-white/5 rounded-xl transition-all"
-              >
-                <CalendarDays className="h-4 w-4 text-indigo-400" />
-                {selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                {isToday && <span className="ml-1 rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-400">Today</span>}
-              </button>
-
-              <button 
-                onClick={() => shiftDate(1)}
-                disabled={isToday}
-                className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-white/10 text-white disabled:opacity-20"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
+          {/* Compact Date Navigation with Calendar Popover */}
+          <div className="flex items-center gap-2 rounded-2xl bg-white/10 p-1.5 ring-1 ring-white/10">
+            <button 
+              onClick={() => shiftDate(-1)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-white/10 text-white"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            
+            {/* Clickable DatePicker with Icon */}
+            <div className="flex items-center gap-2 px-1 [&_button]:!bg-transparent [&_button]:!border-none [&_button]:!shadow-none [&_button]:!text-white [&_button]:!font-black [&_button]:!text-sm [&_button]:!h-auto [&_button]:!px-2 [&_button]:!py-1.5 [&_button]:!ring-0 [&_label]:!hidden">
+              <CalendarDays className="h-4 w-4 text-indigo-400 shrink-0" />
+              <DatePickerField
+                value={selectedDateStr}
+                onChange={(v) => { setSelectedDateStr(v); setCurrentPage(0); }}
+              />
             </div>
+            {isToday && <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">Today</span>}
 
-            {/* Floating Calendar Popover */}
-            {showDatePicker && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
-                <div className="absolute right-0 top-full z-50 mt-3 animate-in fade-in slide-in-from-top-2">
-                  <div className="rounded-[2rem] bg-white p-2 shadow-2xl ring-1 ring-gray-100 dark:bg-gray-900 dark:ring-gray-800">
-                    <Calendar 
-                      onChange={(d) => {
-                        setSelectedDate(d as Date);
-                        setShowDatePicker(false);
-                        setCurrentPage(0);
-                      }} 
-                      value={selectedDate}
-                      maxDate={new Date()}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+            <button 
+              onClick={() => shiftDate(1)}
+              disabled={isToday}
+              className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-white/10 text-white disabled:opacity-20"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
@@ -281,19 +264,17 @@ export default function DailyRoster() {
               className="w-full rounded-2xl bg-white/5 py-3.5 pl-11 pr-4 text-sm font-medium text-white placeholder-slate-500 outline-none ring-1 ring-white/10 focus:ring-indigo-500/50"
             />
           </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-2 ring-1 ring-white/10">
-            <Filter className="h-4 w-4 text-slate-500" />
-            <select
-              value={selectedShiftId}
-              onChange={(e) => {
-                setSelectedShiftId(e.target.value === "ALL" ? "ALL" : Number(e.target.value));
+          <div className="min-w-[160px] [&_select]:!bg-white/10 [&_select]:!border-white/10 [&_select]:!text-white [&_select]:!shadow-none [&_select]:hover:!border-white/20 [&_select]:focus:!border-indigo-500/50 [&_svg]:!text-white/50">
+            <SelectField
+              compact
+              value={selectedShiftId === "ALL" ? "" : String(selectedShiftId)}
+              onChange={(v) => {
+                setSelectedShiftId(v === "" ? "ALL" : Number(v));
                 setCurrentPage(0);
               }}
-              className="bg-transparent text-sm font-black text-white outline-none"
-            >
-              <option value="ALL" className="text-black">All Shifts</option>
-              {shifts.map(s => <option key={s.id} value={s.id} className="text-black">{s.shiftName}</option>)}
-            </select>
+              placeholder="All Shifts"
+              options={shifts.map(s => ({ label: s.shiftName, value: String(s.id) }))}
+            />
           </div>
         </div>
       </div>

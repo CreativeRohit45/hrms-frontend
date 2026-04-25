@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AppModal } from "../../components/ui/AppModal";
 import { useAppToast } from "../../components/ui/ToastProvider";
+import { SelectField } from "../../components/ui/SelectField";
 import {
   useLeaveTypes,
   useAdminLeaveTypes,
@@ -387,14 +388,12 @@ function AdjustBalanceModal({ onClose, onSuccess, activeTypes }: any) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Leave Category</label>
-            <select
-              className="w-full h-12 rounded-2xl border border-gray-100 bg-gray-50 px-4 text-sm font-bold dark:bg-gray-800 dark:border-gray-700 dark:text-white outline-none appearance-none"
-              value={form.leaveTypeId}
-              onChange={e => setForm({ ...form, leaveTypeId: e.target.value })}
-            >
-              {activeTypes.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            <SelectField
+              label="Leave Category"
+              value={String(form.leaveTypeId)}
+              onChange={(v) => setForm({ ...form, leaveTypeId: v })}
+              options={activeTypes.map((t: any) => ({ label: t.name, value: String(t.id) }))}
+            />
           </div>
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Adjustment (+/-)</label>

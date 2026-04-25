@@ -7,6 +7,7 @@ import {
   type EmployeeStatus,
 } from "../../types/employee";
 import { DatePickerField } from "../../components/ui/DatePickerField";
+import { SelectField } from "../../components/ui/SelectField";
 import { getShifts, getDepartments, getLocations, type Shift, type Department, type CompanyLocation } from "../../api/settings";
 import { getEmployeeBalances, getEmployeeAuditTrail } from "../../api/leaves";
 import { 
@@ -253,28 +254,34 @@ export default function EmployeeEdit({
                   <input name="designation" value={form.designation} onChange={handleChange} className="input-base font-bold" required />
                 </div>
                 <div>
-                  <label className={labelCls}>Assigned Department</label>
-                  <select name="departmentId" value={form.departmentId} onChange={handleChange} className="input-base font-bold" required>
-                    {depts.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
+                  <SelectField
+                    label="Assigned Department"
+                    name="departmentId"
+                    value={form.departmentId}
+                    onChange={(v) => setForm(prev => ({ ...prev!, departmentId: v }))}
+                    required
+                    options={depts.map(o => ({ label: o.name, value: String(o.id) }))}
+                  />
                 </div>
                 <div>
-                  <label className={labelCls}>Work Shift Schedule</label>
-                  <select name="shiftId" value={form.shiftId} onChange={handleChange} className="input-base font-bold" required>
-                    {shifts.map((o) => (
-                      <option key={o.id} value={o.id}>{o.shiftName}</option>
-                    ))}
-                  </select>
+                  <SelectField
+                    label="Work Shift Schedule"
+                    name="shiftId"
+                    value={form.shiftId}
+                    onChange={(v) => setForm(prev => ({ ...prev!, shiftId: v }))}
+                    required
+                    options={shifts.map(o => ({ label: o.shiftName, value: String(o.id) }))}
+                  />
                 </div>
                 <div className="md:col-span-2">
-                  <label className={labelCls}>Operational Location</label>
-                  <select name="locationId" value={form.locationId} onChange={handleChange} className="input-base font-bold" required>
-                    {locs.map((o) => (
-                      <option key={o.id} value={o.id}>{o.locationName}</option>
-                    ))}
-                  </select>
+                  <SelectField
+                    label="Operational Location"
+                    name="locationId"
+                    value={form.locationId}
+                    onChange={(v) => setForm(prev => ({ ...prev!, locationId: v }))}
+                    required
+                    options={locs.map(o => ({ label: o.locationName, value: String(o.id) }))}
+                  />
                 </div>
               </div>
             </section>
@@ -286,29 +293,38 @@ export default function EmployeeEdit({
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
                 <div>
-                  <label className={labelCls}>System Permissions</label>
-                  <select name="role" value={form.role} onChange={handleChange} className="input-base font-bold cursor-pointer" required>
-                    {ROLE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
+                  <SelectField
+                    label="System Permissions"
+                    name="role"
+                    value={form.role}
+                    onChange={(v) => setForm(prev => ({ ...prev!, role: v as EmployeeFormState['role'] }))}
+                    required
+                    options={ROLE_OPTIONS.map(o => ({ label: o.label, value: o.value }))}
+                  />
                 </div>
                 <div>
-                  <label className={labelCls}>Employment Status</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value as EmployeeStatus)} className="input-base font-bold cursor-pointer" required>
-                    <option value="ACTIVE">Active</option>
-                    <option value="ON_LEAVE">On Leave</option>
-                    <option value="RESIGNED">Resigned</option>
-                    <option value="TERMINATED">Terminated</option>
-                  </select>
+                  <SelectField
+                    label="Employment Status"
+                    value={status}
+                    onChange={(v) => setStatus(v as EmployeeStatus)}
+                    required
+                    options={[
+                      { label: "Active", value: "ACTIVE" },
+                      { label: "On Leave", value: "ON_LEAVE" },
+                      { label: "Resigned", value: "RESIGNED" },
+                      { label: "Terminated", value: "TERMINATED" },
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className={labelCls}>Payroll Modality</label>
-                  <select name="paymentType" value={form.paymentType} onChange={handleChange} className="input-base font-bold" required>
-                    {PAYMENT_TYPE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
+                  <SelectField
+                    label="Payroll Modality"
+                    name="paymentType"
+                    value={form.paymentType}
+                    onChange={(v) => setForm(prev => ({ ...prev!, paymentType: v as EmployeeFormState['paymentType'] }))}
+                    required
+                    options={PAYMENT_TYPE_OPTIONS.map(o => ({ label: o.label, value: o.value }))}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>Basic Monthly Pay (₹)</label>
@@ -596,16 +612,12 @@ function BalanceAdjustmentModal({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Leave Category</label>
-            <select 
-              value={leaveTypeId} 
-              onChange={(e) => setLeaveTypeId(Number(e.target.value))}
-              className="w-full h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {balances.map(b => (
-                <option key={b.leaveTypeId} value={b.leaveTypeId}>{b.leaveTypeCode}</option>
-              ))}
-            </select>
+            <SelectField
+              label="Leave Category"
+              value={String(leaveTypeId)}
+              onChange={(v) => setLeaveTypeId(Number(v))}
+              options={balances.map(b => ({ label: b.leaveTypeCode, value: String(b.leaveTypeId) }))}
+            />
           </div>
 
           <div>

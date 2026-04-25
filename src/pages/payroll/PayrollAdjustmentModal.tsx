@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { addAdjustment } from "../../api/payroll";
 import type { PayslipResponse, AdjustmentType } from "../../types/payroll";
+import { SelectField } from "../../components/ui/SelectField";
 
 interface Props {
   isOpen: boolean;
@@ -107,17 +108,13 @@ export default function PayrollAdjustmentModal({ isOpen, onClose, record, onSucc
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Type</label>
-                  <select 
+                <div>
+                  <SelectField
+                    label="Type"
                     value={type}
-                    onChange={(e) => setType(e.target.value as AdjustmentType)}
-                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                  >
-                    {ADJ_TYPES.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setType(v as AdjustmentType)}
+                    options={ADJ_TYPES.map(t => ({ label: t.label, value: t.value }))}
+                  />
                 </div>
 
                 <div className="space-y-1.5">

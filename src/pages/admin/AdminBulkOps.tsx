@@ -5,6 +5,7 @@ import type { ColumnDef } from "../../components/ui/DataTable";
 import { useAllEmployees } from "../../hooks/queries/useEmployees";
 import { useLeaveTypes, useBulkGrantLeaves } from "../../hooks/queries/useLeaves";
 import { useAppToast } from "../../components/ui/ToastProvider";
+import { SelectField } from "../../components/ui/SelectField";
 import type { EmployeeResponse } from "../../types/employee";
 
 export default function AdminBulkOps() {
@@ -122,18 +123,14 @@ export default function AdminBulkOps() {
             
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Leave Type</label>
-                <select 
+                <SelectField
+                  label="Leave Type"
                   required
                   value={form.leaveTypeId}
-                  onChange={(e) => setForm({ ...form, leaveTypeId: e.target.value })}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:bg-gray-900"
-                >
-                  <option value="" disabled>Select Type</option>
-                  {leaveTypes.map(lt => (
-                    <option key={lt.id} value={lt.id}>{lt.name}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, leaveTypeId: v })}
+                  placeholder="Select Type"
+                  options={leaveTypes.map(lt => ({ label: lt.name, value: String(lt.id) }))}
+                />
               </div>
 
               <div>

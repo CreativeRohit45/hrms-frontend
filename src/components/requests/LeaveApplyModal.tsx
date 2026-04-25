@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { AlertCircle, ChevronDown, Loader2, SunDim, Sunset } from "lucide-react";
+import { AlertCircle, Loader2, SunDim, Sunset } from "lucide-react";
 import { AppModal } from "../ui/AppModal";
 import { useAppToast } from "../ui/ToastProvider";
 import { useLeaveTypes, useApplyLeave, useLeavePreview } from "../../hooks/queries/useLeaves";
-import { fieldBase, FormLabel, FormTextarea, DateInput, SubmitButton, PillToggle } from "../forms/FormPrimitives";
+import { FormLabel, FormTextarea, SubmitButton, PillToggle } from "../forms/FormPrimitives";
+import { DatePickerField } from "../ui/DatePickerField";
+import { SelectField } from "../ui/SelectField";
 
 export function LeaveApplyModal({
   onClose,
@@ -56,43 +58,30 @@ export function LeaveApplyModal({
     <AppModal isOpen={true} onClose={onClose} title="Apply for Leave" size="lg">
       <form onSubmit={handleSubmit} className="space-y-5 pb-4 pt-2">
 
-        {/* Leave type — h-12 via fieldBase keeps it same height as inputs */}
+        {/* Leave type — unified SelectField */}
         <div>
-          <FormLabel>Leave Type</FormLabel>
-          <div className="relative">
-            <select
-              value={form.leaveTypeId}
-              onChange={(e) => setForm({ ...form, leaveTypeId: Number(e.target.value) })}
-              className={`${fieldBase} appearance-none pr-10`}
-            >
-              {types.map((t: any) => (
-                <option key={t.id} value={t.id} className="dark:bg-gray-900">
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
+          <SelectField
+            label="Leave Type"
+            value={String(form.leaveTypeId)}
+            onChange={(v) => setForm({ ...form, leaveTypeId: Number(v) })}
+            options={types.map((t: any) => ({ label: t.name, value: String(t.id) }))}
+          />
         </div>
 
         {/* Date range — stacked on mobile, side-by-side sm+ */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <FormLabel>Start Date</FormLabel>
-            <DateInput
-              required
-              value={form.startDate}
-              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-            />
-          </div>
-          <div>
-            <FormLabel>End Date</FormLabel>
-            <DateInput
-              required
-              value={form.endDate}
-              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-            />
-          </div>
+          <DatePickerField
+            label="Start Date"
+            required
+            value={form.startDate}
+            onChange={(v) => setForm({ ...form, startDate: v })}
+          />
+          <DatePickerField
+            label="End Date"
+            required
+            value={form.endDate}
+            onChange={(v) => setForm({ ...form, endDate: v })}
+          />
         </div>
 
         {/* Half day toggle row */}

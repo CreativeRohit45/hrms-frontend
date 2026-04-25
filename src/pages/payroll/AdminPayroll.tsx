@@ -9,6 +9,7 @@ import {
 } from "../../api/payroll";
 import type { PayslipResponse } from "../../types/payroll";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { SelectField } from "../../components/ui/SelectField";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -111,26 +112,23 @@ export default function AdminPayroll() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-2 py-1 shadow-sm">
-            <select 
-              value={month} 
-              onChange={(e) => setMonth(parseInt(e.target.value))}
-              className="bg-transparent border-none text-sm font-semibold p-2 focus:ring-0 dark:text-white"
-            >
-              {MONTHS.map((m, i) => (
-                <option key={m} value={i + 1}>{m}</option>
-              ))}
-            </select>
-            <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 my-auto mx-1" />
-            <select 
-              value={year} 
-              onChange={(e) => setYear(parseInt(e.target.value))}
-              className="bg-transparent border-none text-sm font-semibold p-2 focus:ring-0 dark:text-white"
-            >
-              {YEARS.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+          <div className="flex items-center gap-2">
+            <div className="w-40">
+              <SelectField
+                compact
+                value={String(month)}
+                onChange={(v) => setMonth(parseInt(v))}
+                options={MONTHS.map((m, i) => ({ label: m, value: String(i + 1) }))}
+              />
+            </div>
+            <div className="w-28">
+              <SelectField
+                compact
+                value={String(year)}
+                onChange={(v) => setYear(parseInt(v))}
+                options={YEARS.map(y => ({ label: String(y), value: String(y) }))}
+              />
+            </div>
           </div>
 
           <button 

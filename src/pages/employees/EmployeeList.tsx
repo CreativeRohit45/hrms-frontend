@@ -6,6 +6,7 @@ import {
   X, AlertTriangle
 } from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { SelectField } from "../../components/ui/SelectField";
 import { useAllEmployees, useDeleteEmployee, useMyProfile } from "../../hooks/queries/useEmployees";
 import { useDepartments } from "../../hooks/queries/useSettings";
 
@@ -352,27 +353,17 @@ export default function EmployeeList({
 
           {/* Department Filter (HR/Super Admin only) */}
           {!isManager && (
-            <div className="relative min-w-[200px]">
-              <Building2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <select
-                value={selectedDeptId || ""}
-                onChange={(e) => {
-                  const val = e.target.value ? parseInt(e.target.value) : undefined;
-                  setSelectedDeptId(val);
+            <div className="min-w-[200px]">
+              <SelectField
+                compact
+                value={selectedDeptId ? String(selectedDeptId) : ""}
+                onChange={(v) => {
+                  setSelectedDeptId(v ? parseInt(v) : undefined);
                   setCurrentPage(0);
                 }}
-                className="w-full appearance-none rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-10 pr-10 text-sm font-bold text-gray-700 shadow-sm transition-all focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:focus:bg-gray-800/80"
-              >
-                <option value="">All Departments</option>
-                {departments?.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                <MoreVertical className="h-4 w-4 rotate-90 text-gray-400" />
-              </div>
+                placeholder="All Departments"
+                options={departments?.map(d => ({ label: d.name, value: String(d.id) })) || []}
+              />
             </div>
           )}
         </div>
