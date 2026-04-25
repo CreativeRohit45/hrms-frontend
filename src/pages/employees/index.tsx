@@ -11,7 +11,6 @@ type View = "list" | "create" | "edit";
 export default function EmployeesPage() {
   const { pushToast } = useAppToast();
   const [view, setView] = useState<View>("list");
-  const [refreshKey, setRefreshKey] = useState(0);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -34,7 +33,6 @@ export default function EmployeesPage() {
 
   function handleCreateSuccess(employeeCode: string) {
     setView("list");
-    setRefreshKey((key) => key + 1);
     setSuccessBanner(`Employee ${employeeCode} created successfully.`);
     pushToast({ tone: "success", title: "Employee created", message: `${employeeCode} is now available in People.` });
   }
@@ -42,7 +40,6 @@ export default function EmployeesPage() {
   function handleEditSuccess(employeeCode: string) {
     setView("list");
     setEditingId(null);
-    setRefreshKey((key) => key + 1);
     setSuccessBanner(`Employee ${employeeCode} updated successfully.`);
     pushToast({ tone: "success", title: "Employee updated", message: `${employeeCode} was updated successfully.` });
   }
@@ -71,7 +68,7 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {view === "list" && <EmployeeList onAddEmployee={handleAddEmployee} onEditEmployee={handleEditEmployee} refreshKey={refreshKey} />}
+      {view === "list" && <EmployeeList onAddEmployee={handleAddEmployee} onEditEmployee={handleEditEmployee} />}
       {view === "create" && <EmployeeCreate onSuccess={handleCreateSuccess} onCancel={() => setView("list")} />}
       {view === "edit" && editingId && <EmployeeEdit employeeId={editingId} onSuccess={handleEditSuccess} onCancel={() => setView("list")} />}
     </div>

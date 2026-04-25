@@ -2,14 +2,12 @@
 //  AttendanceToolbar — Filters, view toggles, and export for
 //  calendar/list views. Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
-import { STATUS_CONFIG, exportToCSV } from "./shared";
-import type { AttendanceLogResponse, AttendanceStatus } from "../../../types/attendance";
+import { exportToCSV } from "./shared";
+import type { AttendanceLogResponse } from "../../../types/attendance";
 
 interface AttendanceToolbarProps {
   viewMode: "calendar" | "list" | "roster";
   setViewMode: (mode: "calendar" | "list" | "roster") => void;
-  statusFilter: string;
-  setStatusFilter: (v: string) => void;
   filterMonth: string;
   setFilterMonth: (v: string) => void;
   monthOptions: { value: string; label: string }[];
@@ -20,7 +18,6 @@ interface AttendanceToolbarProps {
 
 export function AttendanceToolbar({
   viewMode, setViewMode,
-  statusFilter, setStatusFilter,
   filterMonth, setFilterMonth,
   monthOptions, filtered,
   activeEmployeeCode, isLoading,
@@ -54,32 +51,7 @@ export function AttendanceToolbar({
         </div>
 
         <div className="grid grid-cols-2 sm:contents gap-2 w-full sm:w-auto">
-          {/* Status filter */}
-          {(
-            <div className="relative w-full sm:w-auto sm:order-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="appearance-none w-full bg-gray-50 dark:bg-gray-800
-                  border border-gray-200 dark:border-gray-700 rounded-xl
-                  text-gray-700 dark:text-gray-300 text-[11px] sm:text-xs font-bold
-                  pl-2.5 sm:pl-3 pr-8 sm:pr-10 py-1.5 sm:py-2 outline-none focus:ring-4
-                  focus:ring-indigo-500/10 focus:border-indigo-400
-                  transition-all cursor-pointer min-w-0 sm:min-w-[130px]"
-              >
-                <option value="ALL">All Status</option>
-                {Object.keys(STATUS_CONFIG).map((s) => (
-                  <option key={s} value={s}>{STATUS_CONFIG[s as AttendanceStatus].label}</option>
-                ))}
-              </select>
-              <div className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none"
-                  stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          )}
+          {/* Status filter removed as requested */}
 
           {/* Month filter */}
           <div className="relative w-full sm:w-auto sm:order-4">

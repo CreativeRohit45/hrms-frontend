@@ -113,3 +113,40 @@ export async function updateDepartment(id: number, dept: Department): Promise<De
 export async function deleteDepartment(id: number): Promise<void> {
   await apiClient.delete(`/api/v1/departments/${id}`);
 }
+// ── Leave Types ───────────────────────────────────────────────────────────────
+export interface LeaveType {
+  id?: number;
+  name: string;
+  code: string;
+  paid: boolean;
+  requiresAttachment: boolean;
+  attachmentThresholdDays: number;
+  allowedGenders?: string;
+  maxDaysPerRequest?: number;
+  requiresProbationCompletion: boolean;
+  allowNegativeBalance: boolean;
+  defaultAnnualQuota: number;
+  monthlyAccrualRate: number;
+  carryForwardAllowed: boolean;
+  maxCarryForwardDays: number;
+  active: boolean;
+}
+
+export async function getLeaveTypes(): Promise<LeaveType[]> {
+  const res = await apiClient.get<LeaveType[]>("/api/v1/leaves/admin/types");
+  return res.data;
+}
+
+export async function createLeaveType(lt: LeaveType): Promise<LeaveType> {
+  const res = await apiClient.post<LeaveType>("/api/v1/leaves/admin/types", lt);
+  return res.data;
+}
+
+export async function updateLeaveType(id: number, lt: LeaveType): Promise<LeaveType> {
+  const res = await apiClient.put<LeaveType>(`/api/v1/leaves/admin/types/${id}`, lt);
+  return res.data;
+}
+
+export async function deleteLeaveType(id: number): Promise<void> {
+  await apiClient.delete(`/api/v1/leaves/admin/types/${id}`);
+}

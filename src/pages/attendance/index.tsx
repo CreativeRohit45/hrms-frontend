@@ -375,7 +375,6 @@ export default function AttendancePage() {
     const d = getServerNow();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"calendar" | "list" | "roster">(() => {
     return location.pathname === "/app/roster" ? "roster" : "calendar";
   });
@@ -480,12 +479,8 @@ export default function AttendancePage() {
 
   // ── Computed values ───────────────────────────────────────────
   const filtered = useMemo(
-    () => logs.filter((log) => {
-      const matchesMonth = log.workDate.startsWith(filterMonth);
-      const matchesStatus = statusFilter === "ALL" || log.attendanceStatus === statusFilter;
-      return matchesMonth && matchesStatus;
-    }),
-    [logs, filterMonth, statusFilter]
+    () => logs.filter((log) => log.workDate.startsWith(filterMonth)),
+    [logs, filterMonth]
   );
 
   // ── Weekly Grouping for Mobile ──────────────────────────────────
@@ -805,8 +800,6 @@ export default function AttendancePage() {
           <AttendanceToolbar
             viewMode={viewMode}
             setViewMode={setViewMode}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
             filterMonth={filterMonth}
             setFilterMonth={setFilterMonth}
             monthOptions={monthOptions}

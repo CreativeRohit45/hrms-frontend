@@ -6,7 +6,8 @@ import {
   X, AlertTriangle
 } from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
-import { useAllEmployees, useDeleteEmployee } from "../../hooks/queries/useEmployees";
+import { useAllEmployees, useDeleteEmployee, useMyProfile } from "../../hooks/queries/useEmployees";
+import { useDepartments } from "../../hooks/queries/useSettings";
 
 // ── Avatar color palette (deterministic by name) ──────────────────
 const AVATAR_PALETTES = [
@@ -98,14 +99,18 @@ function ActionMenu({
               Edit Profile
             </button>
           )}
-          <div className="mx-3 border-t border-gray-100 dark:border-gray-800" />
-          <button
-            onClick={() => { onDelete(); setOpen(false); }}
-            className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete Employee
-          </button>
+          {hasEdit && (
+            <>
+              <div className="mx-3 border-t border-gray-100 dark:border-gray-800" />
+              <button
+                onClick={() => { onDelete(); setOpen(false); }}
+                className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Employee
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -240,12 +245,17 @@ export default function EmployeeList({
 }: {
   onAddEmployee: () => void;
   onEditEmployee?: (id: number) => void;
-  refreshKey: number;
 }) {
+  const { data: me } = useMyProfile();
+  const isManager = me?.role === "DEPARTMENT_MANAGER";
+  const canManage = me?.role === "HR_ADMIN" || me?.role === "SUPER_ADMIN";
+
   const [currentPage, setCurrentPage] = useState(0);
+  const [selectedDeptId, setSelectedDeptId] = useState<number | undefined>(undefined);
   const pageSize = 50;
 
-  const { data: pageData, isLoading, isError, error: queryError, refetch } = useAllEmployees(currentPage, pageSize);
+  const { data: departments } = useDepartments();
+  const { data: pageData, isLoading, isError, error: queryError, refetch } = useAllEmployees(currentPage, pageSize, selectedDeptId);
   const employees = pageData?.content || [];
   const totalPages = pageData?.totalPages || 0;
   
@@ -307,32 +317,63 @@ export default function EmployeeList({
             </div>
           </div>
 
-          <button
-            onClick={onAddEmployee}
-            className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-indigo-200/50 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-indigo-900/30"
-          >
-            <UserPlus className="h-4 w-4 shrink-0" />
-            <span>Add Employee</span>
-          </button>
+          {canManage && (
+            <button
+              onClick={onAddEmployee}
+              className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-indigo-200/50 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-indigo-900/30"
+            >
+              <UserPlus className="h-4 w-4 shrink-0" />
+              <span>Add Employee</span>
+            </button>
+          )}
         </div>
 
-        {/* Search bar */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-400 transition-colors" />
-          <input
-            type="text"
-            placeholder="Search by name, code, or department…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-3.5 pl-11 pr-10 text-sm font-medium text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:placeholder-gray-600 dark:focus:bg-gray-800/80"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
-            >
-              <X className="h-4 w-4" />
-            </button>
+        {/* Filters Row */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Search bar */}
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-400 transition-colors" />
+            <input
+              type="text"
+              placeholder="Search by name, code, or department…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-11 pr-10 text-sm font-medium text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:placeholder-gray-600 dark:focus:bg-gray-800/80"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Department Filter (HR/Super Admin only) */}
+          {!isManager && (
+            <div className="relative min-w-[200px]">
+              <Building2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={selectedDeptId || ""}
+                onChange={(e) => {
+                  const val = e.target.value ? parseInt(e.target.value) : undefined;
+                  setSelectedDeptId(val);
+                  setCurrentPage(0);
+                }}
+                className="w-full appearance-none rounded-2xl border border-gray-100 bg-gray-50 py-3 pl-10 pr-10 text-sm font-bold text-gray-700 shadow-sm transition-all focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white dark:focus:bg-gray-800/80"
+              >
+                <option value="">All Departments</option>
+                {departments?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                <MoreVertical className="h-4 w-4 rotate-90 text-gray-400" />
+              </div>
+            </div>
           )}
         </div>
 
@@ -380,7 +421,7 @@ export default function EmployeeList({
                 index={index}
                 onEdit={() => onEditEmployee?.(emp.id)}
                 onDelete={() => emp.id && setConfirmDelete(emp.id)}
-                hasEdit={!!onEditEmployee}
+                hasEdit={canManage}
               />
             ))
           )}

@@ -6,7 +6,8 @@ import {
   getShifts, createShift, updateShift, deleteShift, type Shift,
   getHolidays, createHoliday, updateHoliday, deleteHoliday, type Holiday,
   getLocations, createLocation, updateLocation, type CompanyLocation,
-  getDepartments, createDepartment, updateDepartment, deleteDepartment, type Department
+  getDepartments, createDepartment, updateDepartment, deleteDepartment, type Department,
+  getLeaveTypes, createLeaveType, updateLeaveType, deleteLeaveType, type LeaveType
 } from '../../api/settings';
 
 const settingsKeys = {
@@ -15,6 +16,7 @@ const settingsKeys = {
   holidays: () => [...settingsKeys.all, 'holidays'] as const,
   locations: () => [...settingsKeys.all, 'locations'] as const,
   departments: () => [...settingsKeys.all, 'departments'] as const,
+  leaveTypes: () => [...settingsKeys.all, 'leaveTypes'] as const,
 };
 
 // ── Shifts ────────────────────────────────────────────────────────────────────
@@ -44,6 +46,36 @@ export function useDeleteShift() {
   return useMutation({
     mutationFn: (id: number) => deleteShift(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() }),
+  });
+}
+
+// ── Leave Types ───────────────────────────────────────────────────────────────
+
+export function useLeaveTypes() {
+  return useQuery<LeaveType[]>({
+    queryKey: settingsKeys.leaveTypes(),
+    queryFn: getLeaveTypes,
+  });
+}
+
+export function useCreateLeaveType() {
+  return useMutation({
+    mutationFn: (lt: LeaveType) => createLeaveType(lt),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.leaveTypes() }),
+  });
+}
+
+export function useUpdateLeaveType() {
+  return useMutation({
+    mutationFn: ({ id, lt }: { id: number; lt: LeaveType }) => updateLeaveType(id, lt),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.leaveTypes() }),
+  });
+}
+
+export function useDeleteLeaveType() {
+  return useMutation({
+    mutationFn: (id: number) => deleteLeaveType(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.leaveTypes() }),
   });
 }
 

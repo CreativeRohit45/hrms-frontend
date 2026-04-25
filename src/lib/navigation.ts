@@ -8,15 +8,17 @@ export interface NavItem {
   group: NavGroup;
   mobileLabel?: string;
   roles?: EmployeeRole[];
+  excludeRoles?: EmployeeRole[];
 }
 
 export const NAV_ITEMS: NavItem[] = [
   // --- MY SPACE ---
-  { label: "Dashboard", path: "/app/dashboard", group: "My Space", mobileLabel: "Home" },
-  { label: "My Profile", path: "/app/profile", group: "My Space", mobileLabel: "Profile" },
-  { label: "Attendance", path: "/app/attendance", group: "My Space", mobileLabel: "Attendance" },
-  { label: "My Requests", path: "/app/requests", group: "My Space", mobileLabel: "Self" },
-  { label: "My Payslips", path: "/app/my-payslips", group: "My Space", mobileLabel: "Payslips" },
+  { label: "Dashboard", path: "/app/dashboard", group: "My Space", mobileLabel: "Home", excludeRoles: ["SUPER_ADMIN"] },
+  { label: "Admin Dashboard", path: "/app/dashboard", group: "HR Operations", mobileLabel: "Home", roles: ["SUPER_ADMIN"] },
+  { label: "My Profile", path: "/app/profile", group: "My Space", mobileLabel: "Profile", excludeRoles: ["SUPER_ADMIN"] },
+  { label: "Attendance", path: "/app/attendance", group: "My Space", mobileLabel: "Attendance", excludeRoles: ["SUPER_ADMIN"] },
+  { label: "My Requests", path: "/app/requests", group: "My Space", mobileLabel: "Self", excludeRoles: ["SUPER_ADMIN"] },
+  { label: "My Payslips", path: "/app/my-payslips", group: "My Space", mobileLabel: "Payslips", excludeRoles: ["SUPER_ADMIN"] },
 
   // --- TEAM SPACE ---
   { 
@@ -38,12 +40,6 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/app/employees", 
     group: "HR Operations", 
     roles: ["HR_ADMIN", "SUPER_ADMIN", "DEPARTMENT_MANAGER"] 
-  },
-  { 
-    label: "HR Analytics", 
-    path: "/app/analytics", 
-    group: "HR Operations", 
-    roles: ["HR_ADMIN", "SUPER_ADMIN"] 
   },
   { 
     label: "Bulk Operations", 
@@ -68,7 +64,13 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export function getVisibleNavItems(role?: EmployeeRole) {
-  return NAV_ITEMS.filter((item) => !item.roles || (role && item.roles.includes(role)));
+  if (!role) return [];
+  return NAV_ITEMS.filter((item) => {
+    // 1. Check exclusions first
+    if (item.excludeRoles && item.excludeRoles.includes(role)) return false;
+    // 2. Check inclusions
+    return !item.roles || item.roles.includes(role);
+  });
 }
 
 export function getGroupedNavItems(role?: EmployeeRole) {

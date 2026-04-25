@@ -3,11 +3,13 @@ import ShiftsTab from "./components/ShiftsTab";
 import HolidaysTab from "./components/HolidaysTab";
 import CompanyTab from "./components/CompanyTab";
 import DepartmentsTab from "./components/DepartmentsTab";
+import LeaveTypesTab from "./components/LeaveTypesTab";
 
 // ── Tab Config ────────────────────────────────────────────────────────────────
 const TABS = [
   { id: "shifts", label: "Shifts", icon: "🕐" },
   { id: "holidays", label: "Holidays", icon: "🎉" },
+  { id: "leave-types", label: "Leave Types", icon: "📅" },
   { id: "company", label: "Company", icon: "🏢" },
   { id: "departments", label: "Departments", icon: "👥" },
 ] as const;
@@ -48,6 +50,7 @@ export default function SettingsPage() {
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
         {activeTab === "shifts" && <ShiftsTab />}
         {activeTab === "holidays" && <HolidaysTab />}
+        {activeTab === "leave-types" && <LeaveTypesTab />}
         {activeTab === "company" && <CompanyTab />}
         {activeTab === "departments" && <DepartmentsTab />}
       </div>

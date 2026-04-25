@@ -1,8 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import {
   CheckCircle2, XCircle, Clock3, CalendarDays,
-  MapPin, Inbox, ArrowRight, Ticket, PalmtreeIcon,
-  Bell
+  MapPin, Inbox, ArrowRight, Ticket, PalmtreeIcon
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppToast } from "../../components/ui/ToastProvider";
@@ -308,8 +307,8 @@ export default function UnifiedInbox() {
               <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">Unified Inbox</h1>
             </div>
           </div>
-          <div className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 focus:outline-none">
-            <Bell className="h-5 w-5 text-white" />
+          <div className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/5 ring-1 ring-white/10 focus:outline-none opacity-0">
+            {/* Notification system decommissioned */}
           </div>
         </div>
       </div>

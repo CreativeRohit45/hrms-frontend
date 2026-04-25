@@ -109,6 +109,78 @@ export default function Dashboard() {
   if (!stats) return <EmptyState title="Sync Broken" description="Could not load dashboard stats." />;
 
   const isActive = stats.currentSession?.active;
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
+
+  if (isSuperAdmin) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-0.5">
+            <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white sm:text-3xl">
+              System <span className="text-indigo-600 dark:text-indigo-400">Overview</span>
+            </h1>
+            <p className="text-xs font-bold text-gray-400 dark:text-gray-500">{dateLabel}</p>
+          </div>
+          <div className="inline-flex items-center gap-2.5 rounded-2xl border border-gray-100 bg-white p-1.5 pl-3.5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <Clock className="h-3.5 w-3.5 text-indigo-500" />
+            <div className="rounded-xl bg-gray-50 px-3 py-1.5 font-mono text-sm font-black text-gray-900 dark:bg-gray-800 dark:text-white">
+              {clockLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <button 
+            onClick={() => window.location.href = '/app/team/inbox'}
+            className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-indigo-900/50"
+          >
+            <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-indigo-50 transition-transform group-hover:scale-150 dark:bg-indigo-900/10" />
+            <div className="relative space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none">
+                <Users className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Unified Inbox</h3>
+                <p className="mt-1 text-sm font-medium text-gray-500">Review and approve pending requests</p>
+              </div>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => window.location.href = '/app/employees'}
+            className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-emerald-200 hover:shadow-2xl hover:shadow-emerald-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-emerald-900/50"
+          >
+            <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-emerald-50 transition-transform group-hover:scale-150 dark:bg-emerald-900/10" />
+            <div className="relative space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 dark:shadow-none">
+                <UserCheck className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Employee Directory</h3>
+                <p className="mt-1 text-sm font-medium text-gray-500">Manage organizational workforce</p>
+              </div>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => window.location.href = '/app/settings'}
+            className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-amber-200 hover:shadow-2xl hover:shadow-amber-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-amber-900/50"
+          >
+            <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-amber-50 transition-transform group-hover:scale-150 dark:bg-amber-900/10" />
+            <div className="relative space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200 dark:shadow-none">
+                <CalendarDays className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Master Data</h3>
+                <p className="mt-1 text-sm font-medium text-gray-500">Configure system settings and holidays</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

@@ -16,11 +16,8 @@ import AttendancePage from "./pages/attendance/index";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
-import LeavesPage from "./pages/leaves/index";
-import GatepassPage from "./pages/gatepasses/index";
 import AdminPayroll from "./pages/payroll/AdminPayroll";
 import MyPayslips from "./pages/payroll/MyPayslips";
-import AnalyticsDashboard from "./pages/dashboard/AnalyticsDashboard";
 import AdminBulkOps from "./pages/admin/AdminBulkOps";
 
 // NEW INTENT-BASED PAGES
@@ -47,14 +44,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RoleGuard({ children, roles }: { children: React.ReactNode; roles: string[] }) {
+function RoleGuard({ children, roles, fallback = "/app/dashboard" }: { children: React.ReactNode; roles: string[]; fallback?: string }) {
   const { user } = useAuth();
 
   if (!user || !roles.includes(user.role)) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to={fallback} replace />;
   }
 
   return <>{children}</>;
+}
+
+function RoleBasedRedirect() {
+  const { user } = useAuth();
+  if (user?.role === "SUPER_ADMIN") {
+    return <Navigate to="dashboard" replace />;
+  }
+  return <Navigate to="dashboard" replace />;
 }
 
 function AppRoutes() {
@@ -69,14 +74,49 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route index element={<RoleBasedRedirect />} />
         
-        {/* MY SPACE */}
-        <Route path="profile" element={<Profile />} />
-        <Route path="attendance" element={<AttendancePage />} />
-        <Route path="requests" element={<MyRequests />} />
-        <Route path="my-payslips" element={<MyPayslips />} />
+        {/* MY SPACE (Hidden from SUPER_ADMIN in sidebar, but accessible as Admin Dashboard) */}
+        <Route 
+          path="dashboard" 
+          element={
+            <RoleGuard roles={["EMPLOYEE", "HR_ADMIN", "DEPARTMENT_MANAGER", "SUPER_ADMIN"]} fallback="/app/team/inbox">
+              <Dashboard />
+            </RoleGuard>
+          } 
+        />
+        <Route 
+          path="profile" 
+          element={
+            <RoleGuard roles={["EMPLOYEE", "HR_ADMIN", "DEPARTMENT_MANAGER"]} fallback="/app/team/inbox">
+              <Profile />
+            </RoleGuard>
+          } 
+        />
+        <Route 
+          path="attendance" 
+          element={
+            <RoleGuard roles={["EMPLOYEE", "HR_ADMIN", "DEPARTMENT_MANAGER"]} fallback="/app/team/inbox">
+              <AttendancePage />
+            </RoleGuard>
+          } 
+        />
+        <Route 
+          path="requests" 
+          element={
+            <RoleGuard roles={["EMPLOYEE", "HR_ADMIN", "DEPARTMENT_MANAGER"]} fallback="/app/team/inbox">
+              <MyRequests />
+            </RoleGuard>
+          } 
+        />
+        <Route 
+          path="my-payslips" 
+          element={
+            <RoleGuard roles={["EMPLOYEE", "HR_ADMIN", "DEPARTMENT_MANAGER"]} fallback="/app/team/inbox">
+              <MyPayslips />
+            </RoleGuard>
+          } 
+        />
 
         {/* TEAM SPACE */}
         <Route path="team">
@@ -116,14 +156,6 @@ function AppRoutes() {
           }
         />
         <Route
-          path="analytics"
-          element={
-            <RoleGuard roles={["HR_ADMIN", "SUPER_ADMIN"]}>
-              <AnalyticsDashboard />
-            </RoleGuard>
-          }
-        />
-        <Route
           path="bulk-ops"
           element={
             <RoleGuard roles={["HR_ADMIN", "SUPER_ADMIN"]}>
@@ -142,9 +174,7 @@ function AppRoutes() {
           }
         />
 
-        {/* LEGACY / COMPATIBILITY (Optional: leave existing paths for direct links) */}
-        <Route path="leaves" element={<LeavesPage />} />
-        <Route path="gatepasses" element={<GatepassPage />} />
+        {/* LEGACY / COMPATIBILITY (Removed) */}
         
       </Route>
       <Route path="/admin/*" element={<Navigate to="/app/dashboard" replace />} />
