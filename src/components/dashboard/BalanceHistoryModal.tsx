@@ -11,18 +11,6 @@ import {
 
 
 
-interface BalanceAudit {
-  id: number;
-  leaveTypeName: string;
-  leaveTypeCode: string;
-  transactionType: string;
-  amount: number;
-  balanceAfter: number;
-  reason: string;
-  performedByName: string;
-  createdAt: string;
-}
-
 interface BalanceHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;

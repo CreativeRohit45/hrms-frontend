@@ -134,10 +134,11 @@ export function useUpdateLocation() {
 
 // ── Departments ───────────────────────────────────────────────────────────────
 
-export function useDepartments() {
+export function useDepartments(enabled = true) {
   return useQuery<Department[]>({
     queryKey: settingsKeys.departments(),
     queryFn: getDepartments,
+    enabled,
   });
 }
 

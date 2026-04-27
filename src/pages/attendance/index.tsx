@@ -5,7 +5,6 @@
 //  useAttendanceDashboardStats + mutation hooks.
 // ═══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { getServerNow } from "../../utils/serverTime";
 import {
@@ -16,7 +15,7 @@ import {
 } from "../../types/attendance";
 import type { EmployeeResponse } from "../../types/employee";
 import { useAuth } from "../../context/AuthContext";
-import { getEmployees } from "../../api/employees";
+import { useAllEmployees } from "../../hooks/queries/useEmployees";
 import { TimePickerField, parseTimeToParts } from "../../components/ui/TimePickerField";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { useAppToast } from "../../components/ui/ToastProvider";
@@ -25,7 +24,6 @@ import { useAppToast } from "../../components/ui/ToastProvider";
 import {
   useMyAttendanceLogs,
   useEmployeeLogs,
-  useDailyRosterLogs,
   useAttendanceDashboardStats,
   useRequestCorrection,
   useApproveCorrection,
@@ -38,7 +36,6 @@ import { StatCard, getMonthOptions, generateCalendarGrid } from "./components/sh
 import { AttendanceToolbar } from "./components/AttendanceToolbar";
 import { AttendanceCalendar } from "./components/AttendanceCalendar";
 import { AttendanceList } from "./components/AttendanceList";
-import { AttendanceRoster } from "./components/AttendanceRoster";
 
 // ── Correction Request Modal ──────────────────────────────────────
 interface CorrectionModalProps {
@@ -351,13 +348,12 @@ export default function AttendancePage() {
     || user?.role === "HR_ADMIN"
     || user?.role === "DEPARTMENT_MANAGER";
 
-  const location = useLocation();
 
   // ── UI-only state (preserved) ──────────────────────────────────
   const [activeEmployeeCode, setActiveEmployeeCode] = useState<string>("me");
   const [searchInput, setSearchInput] = useState<string>("");
-  const [employeeList, setEmployeeList] = useState<EmployeeResponse[]>([]);
-  const [rosterSearchTerm, setRosterSearchTerm] = useState("");
+  const { data: employeePage } = useAllEmployees(0, 1000, undefined);
+  const employeeList = employeePage?.content ?? [] as EmployeeResponse[];
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const lastAutoMonth = useRef("");
@@ -368,24 +364,13 @@ export default function AttendancePage() {
   };
   const todayStr = getLocalTodayStr();
 
-  const [rosterDate, setRosterDate] = useState<string>(todayStr);
   const [otApproveTarget, setOtApproveTarget] = useState<AttendanceLogResponse | null>(null);
 
   const [filterMonth, setFilterMonth] = useState<string>(() => {
     const d = getServerNow();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [viewMode, setViewMode] = useState<"calendar" | "list" | "roster">(() => {
-    return location.pathname === "/app/roster" ? "roster" : "calendar";
-  });
-
-  useEffect(() => {
-    if (location.pathname === "/app/roster") {
-      setViewMode("roster");
-    } else if (viewMode === "roster") {
-      setViewMode("calendar");
-    }
-  }, [location.pathname]);
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
 
   const [correctionTarget, setCorrectionTarget] = useState<AttendanceLogResponse | null>(null);
   const [reviewTarget, setReviewTarget] = useState<AttendanceLogResponse | null>(null);
@@ -406,14 +391,7 @@ export default function AttendancePage() {
     activeEmployeeCode !== "me",
   );
 
-  // 3. Daily roster (admin roster view)
-  const rosterQuery = useDailyRosterLogs(
-    rosterDate,
-    0,
-    50,
-    undefined,
-    viewMode === "roster"
-  );
+
 
   // 4. Dashboard stats (weekend days, holidays)
   const dashboardStatsQuery = useAttendanceDashboardStats(activeEmployeeCode);
@@ -428,17 +406,12 @@ export default function AttendancePage() {
   }, [activeEmployeeCode, myLogsQuery.data, employeeLogsQuery.data]);
 
   const logs = rawLogs;
-  const dailyLogs = rosterQuery.data?.content ?? [];
 
-  const isLoading = viewMode === "roster"
-    ? rosterQuery.isLoading
-    : (activeEmployeeCode === "me" ? myLogsQuery.isLoading : employeeLogsQuery.isLoading);
+  const isLoading = activeEmployeeCode === "me" ? myLogsQuery.isLoading : employeeLogsQuery.isLoading;
 
-  const error = viewMode === "roster"
-    ? (rosterQuery.isError ? "Unable to load roster. Please try again." : null)
-    : (activeEmployeeCode === "me"
+  const error = activeEmployeeCode === "me"
       ? (myLogsQuery.isError ? "Unable to load attendance records. Please try again." : null)
-      : (employeeLogsQuery.isError ? "Employee code not found or unable to load records." : null));
+      : (employeeLogsQuery.isError ? "Employee code not found or unable to load records." : null);
 
   const weekendDaysStr = dashboardStatsQuery.data?.weekendDays ?? "Saturday,Sunday";
   const holidays = dashboardStatsQuery.data?.allHolidays ?? [];
@@ -462,9 +435,7 @@ export default function AttendancePage() {
 
   // ── Refresh helper (for the refresh button) ───────────────────
   const handleRefresh = () => {
-    if (viewMode === "roster") {
-      rosterQuery.refetch();
-    } else if (activeEmployeeCode === "me") {
+    if (activeEmployeeCode === "me") {
       myLogsQuery.refetch();
     } else {
       employeeLogsQuery.refetch();
@@ -472,10 +443,7 @@ export default function AttendancePage() {
     dashboardStatsQuery.refetch();
   };
 
-  // ── Load employee list for search (Manager only) ──────────────
-  useEffect(() => {
-    if (isManager) getEmployees().then(res => setEmployeeList(res.content)).catch(() => { });
-  }, [isManager]);
+  // Employee list is now loaded via useAllEmployees hook above
 
   // ── Computed values ───────────────────────────────────────────
   const filtered = useMemo(
@@ -637,7 +605,7 @@ export default function AttendancePage() {
         <div className="flex flex-col">
           <h1 className="text-gray-900 dark:text-gray-100 text-xl font-bold tracking-tight flex items-center gap-3">
             <div className="w-1.5 h-6 bg-indigo-600 rounded-full" />
-            {viewMode === "roster" ? "Daily Roster" : (activeEmployeeCode === "me" ? "My Attendance" : "Employee Records")}
+            {activeEmployeeCode === "me" ? "My Attendance" : "Employee Records"}
           </h1>
           {activeEmployeeCode !== "me" && selectedEmployee && (
             <div className="flex items-center gap-2 mt-1">
@@ -663,7 +631,7 @@ export default function AttendancePage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {isManager && viewMode !== "roster" && (
+          {isManager && (
             <div className="relative" ref={searchContainerRef}>
               <div className="relative">
                 <input
@@ -804,24 +772,7 @@ export default function AttendancePage() {
           filtered={filtered}
           activeEmployeeCode={activeEmployeeCode}
           isLoading={isLoading}
-          isManager={isManager}
         />
-
-        {/* ── ROSTER VIEW ── */}
-        {viewMode === "roster" && (
-          <AttendanceRoster
-            dailyLogs={dailyLogs}
-            rosterDate={rosterDate}
-            setRosterDate={setRosterDate}
-            rosterSearchTerm={rosterSearchTerm}
-            setRosterSearchTerm={setRosterSearchTerm}
-            isLoading={isLoading}
-            isManager={isManager}
-            todayStr={todayStr}
-            setReviewTarget={setReviewTarget}
-            setOtApproveTarget={setOtApproveTarget}
-          />
-        )}
 
         {/* ── LIST VIEW ── */}
         {(viewMode === "list" || viewMode === "calendar") && (
@@ -853,7 +804,7 @@ export default function AttendancePage() {
         )}
 
         {/* ── Table footer ── */}
-        {!isLoading && viewMode !== "roster" && filtered.length > 0 && (
+        {!isLoading && filtered.length > 0 && (
           <div className="flex items-center justify-between px-5 py-3
             border-t border-gray-100 dark:border-gray-800
             bg-gray-50/50 dark:bg-gray-900/50">

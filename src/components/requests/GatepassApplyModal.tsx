@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AppModal } from "../ui/AppModal";
 import { useAppToast } from "../ui/ToastProvider";
 import { useApplyGatepass } from "../../hooks/queries/useGatepasses";
-import { FormLabel, FormTextarea, DateTimeInput, SubmitButton, PillToggle } from "../forms/FormPrimitives";
+import { FormLabel, FormTextarea, SubmitButton, PillToggle } from "../forms/FormPrimitives";
 import { DatePickerField } from "../ui/DatePickerField";
 
 export function GatepassApplyModal({
@@ -73,7 +73,7 @@ export function GatepassApplyModal({
         </div>
 
         {/* Time pickers */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <FormLabel>Exit Time</FormLabel>
             <div className="relative flex items-center">
@@ -82,7 +82,7 @@ export function GatepassApplyModal({
                 required
                 value={form.outTime}
                 onChange={(e) => setForm({ ...form, outTime: e.target.value })}
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base sm:text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-orange-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
               />
             </div>
           </div>
@@ -94,7 +94,7 @@ export function GatepassApplyModal({
                 required
                 value={form.inTime}
                 onChange={(e) => setForm({ ...form, inTime: e.target.value })}
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base sm:text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-orange-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
               />
             </div>
           </div>
@@ -113,7 +113,7 @@ export function GatepassApplyModal({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-3 pt-1">
+        <div className="sticky bottom-0 -mx-4 flex flex-col gap-3 border-t border-gray-100 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-1 sm:backdrop-blur-0">
           <SubmitButton
             isPending={applyMutation.isPending}
             label="Submit Gatepass Request"

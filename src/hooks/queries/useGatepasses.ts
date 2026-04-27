@@ -47,6 +47,7 @@ function invalidateGatepassEcosystem() {
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
   // Dashboard badge counts
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+  queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
 }
 
 // ── Mutations ────────────────────────────────────────────────────

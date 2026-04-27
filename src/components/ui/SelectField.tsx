@@ -42,7 +42,7 @@ export function SelectField({
           }`}
         >
           {placeholder && (
-            <option value="" disabled>
+            <option value="">
               {placeholder}
             </option>
           )}

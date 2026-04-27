@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { punchIn, punchOut } from "../api/attendance";
 import { getServerNow } from "../utils/serverTime";
 import {
   AlertCircle,
@@ -18,8 +17,7 @@ import { StatusBadge } from "../components/ui/StatusBadge";
 import { useAppToast } from "../components/ui/ToastProvider";
 import { SkeletonCard, SkeletonTable } from "../components/ui/Skeletons";
 import { useDashboardStats, useDepartmentAbsentees } from "../hooks/queries/useDashboard";
-import { queryClient } from "../lib/queryClient";
-import { queryKeys } from "../lib/queryKeys";
+import { usePunchIn, usePunchOut } from "../hooks/queries/useAttendance";
 import { LeaveBalanceWidget } from "../components/dashboard/LeaveBalanceWidget";
 
 export default function Dashboard() {
@@ -30,7 +28,10 @@ export default function Dashboard() {
   const { data: stats, isLoading: loading } = useDashboardStats();
   const { data: absentees = [] } = useDepartmentAbsentees();
 
-  const [punchLoading, setPunchLoading] = useState(false);
+  const punchInMutation = usePunchIn();
+  const punchOutMutation = usePunchOut();
+  const punchLoading = punchInMutation.isPending || punchOutMutation.isPending;
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Live clock — the only remaining interval, not a data-fetch concern
@@ -41,7 +42,6 @@ export default function Dashboard() {
 
   async function handlePunch() {
     if (!stats) return;
-    setPunchLoading(true);
     try {
       const position = await new Promise<GeolocationPosition>((res, rej) => 
         navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000 })
@@ -51,22 +51,19 @@ export default function Dashboard() {
       const isActive = stats.currentSession?.active;
       
       if (isActive) {
-        await punchOut(lat, lng);
+        await punchOutMutation.mutateAsync({ lat, lng });
         pushToast({ title: "Punched Out", message: "Workday record saved.", tone: "success" });
       } else {
-        await punchIn(lat, lng);
+        await punchInMutation.mutateAsync({ lat, lng });
         pushToast({ title: "Punched In", message: "Shift started.", tone: "success" });
       }
-      // Invalidate the cache — TanStack Query will refetch in the background
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+      // Cache invalidation is handled automatically by the mutation's onSuccess
     } catch (error: any) {
       pushToast({ 
         title: "Punch Failed", 
         message: error?.response?.data?.message || "Location verification failed.", 
         tone: "error" 
       });
-    } finally {
-      setPunchLoading(false);
     }
   }
 
@@ -149,6 +146,22 @@ export default function Dashboard() {
           </button>
 
           <button 
+            onClick={() => navigate('/app/team/roster')}
+            className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-900/50"
+          >
+            <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-blue-50 transition-transform group-hover:scale-150 dark:bg-blue-900/10" />
+            <div className="relative space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-200 dark:shadow-none">
+                <Clock className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Daily Roster</h3>
+                <p className="mt-1 text-sm font-medium text-gray-500">Monitor team attendance and shifts</p>
+              </div>
+            </div>
+          </button>
+
+          <button 
             onClick={() => navigate('/app/employees')}
             className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-emerald-200 hover:shadow-2xl hover:shadow-emerald-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-emerald-900/50"
           >
@@ -160,6 +173,38 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white">Employee Directory</h3>
                 <p className="mt-1 text-sm font-medium text-gray-500">Manage organizational workforce</p>
+              </div>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => navigate('/app/payroll')}
+            className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-rose-200 hover:shadow-2xl hover:shadow-rose-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-rose-900/50"
+          >
+            <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-rose-50 transition-transform group-hover:scale-150 dark:bg-rose-900/10" />
+            <div className="relative space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-200 dark:shadow-none">
+                <AlertCircle className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Payroll</h3>
+                <p className="mt-1 text-sm font-medium text-gray-500">Process and manage salaries</p>
+              </div>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => navigate('/app/bulk-ops')}
+            className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-purple-200 hover:shadow-2xl hover:shadow-purple-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-900/50"
+          >
+            <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-purple-50 transition-transform group-hover:scale-150 dark:bg-purple-900/10" />
+            <div className="relative space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-lg shadow-purple-200 dark:shadow-none">
+                <Users className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Bulk Operations</h3>
+                <p className="mt-1 text-sm font-medium text-gray-500">Import/Export employee data</p>
               </div>
             </div>
           </button>

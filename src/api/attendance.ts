@@ -7,11 +7,16 @@ import type { PageResponse } from "../types/common";
  * GET /api/v1/attendance/inbox
  * Returns a paginated list of attendance-related requests (corrections, overtime, etc.).
  */
-export async function getUnifiedInbox(page = 0, size = 50, status?: string): Promise<PageResponse<any>> {
-  const url = status 
-    ? `/api/v1/attendance/inbox?page=${page}&size=${size}&status=${status}`
-    : `/api/v1/attendance/inbox?page=${page}&size=${size}`;
-  const response = await apiClient.get<PageResponse<any>>(url);
+export async function getUnifiedInbox(
+  page = 0,
+  size = 50,
+  status?: string,
+  requestType?: string,
+  departmentId?: number
+): Promise<PageResponse<any>> {
+  const response = await apiClient.get<PageResponse<any>>("/api/v1/attendance/inbox", {
+    params: { page, size, status, requestType, departmentId },
+  });
   return response.data;
 }
 
@@ -51,11 +56,19 @@ export async function getDailyAttendanceLogs(
   date: string,
   page = 0,
   size = 50,
-  shiftId?: number | string
+  shiftId?: number | string,
+  departmentId?: number | string,
+  status?: string
 ): Promise<PageResponse<AttendanceLogResponse>> {
   let url = `/api/v1/attendance/roster?date=${date}&page=${page}&size=${size}`;
   if (shiftId && shiftId !== "ALL") {
     url += `&shiftId=${shiftId}`;
+  }
+  if (departmentId && departmentId !== "ALL") {
+    url += `&departmentId=${departmentId}`;
+  }
+  if (status && status !== "ALL") {
+    url += `&status=${status}`;
   }
   const response = await apiClient.get<PageResponse<AttendanceLogResponse>>(url);
   return response.data;

@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { 
   Calculator, Lock, CheckCircle2, AlertCircle, FileText, 
   Users, IndianRupee, Timer, Edit3, RotateCcw
 } from "lucide-react";
-import { 
-  getCompanyPayroll, generatePayrollBulk, lockPayroll, 
-  recalculateRecord 
-} from "../../api/payroll";
 import type { PayslipResponse } from "../../types/payroll";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { SelectField } from "../../components/ui/SelectField";
+import { useAppToast } from "../../components/ui/ToastProvider";
+import {
+  useCompanyPayroll,
+  useGeneratePayrollBulk,
+  useLockPayroll,
+  useRecalculateRecord,
+} from "../../hooks/queries/usePayroll";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -24,75 +27,49 @@ export default function AdminPayroll() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
-  const [records, setRecords] = useState<PayslipResponse[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
   const [showLockModal, setShowLockModal] = useState(false);
   const [showRunModal, setShowRunModal] = useState(false);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PayslipResponse | null>(null);
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  const fetchPayrollData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getCompanyPayroll(month, year);
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to fetch payroll", err);
-      setRecords([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [month, year]);
+  const { pushToast } = useAppToast();
 
-  useEffect(() => {
-    fetchPayrollData();
-  }, [fetchPayrollData]);
+  // ── TanStack Query — declarative data layer ────────────────────
+  // keepPreviousData prevents the "Ghost Data" flash when switching months
+  const { data: records = [], isLoading: loading, isFetching } = useCompanyPayroll(month, year);
 
-  const showToast = (type: "success" | "error", msg: string) => {
-    setToast({ type, msg });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const generateMutation = useGeneratePayrollBulk();
+  const lockMutation = useLockPayroll();
+  const recalcMutation = useRecalculateRecord(month, year);
+
+  const actionLoading = generateMutation.isPending || lockMutation.isPending || recalcMutation.isPending;
 
   const isLocked = Array.isArray(records) && records.some((r: PayslipResponse) => r.status === "LOCKED" || r.status === "PAID");
 
   const handleRunPayroll = async () => {
-    setActionLoading(true);
     try {
-      await generatePayrollBulk(month, year);
-      showToast("success", `Payroll generated successfully for ${MONTHS[month - 1]} ${year}`);
-      fetchPayrollData();
+      await generateMutation.mutateAsync({ month, year });
+      pushToast({ title: "Payroll Generated", message: `Payroll generated successfully for ${MONTHS[month - 1]} ${year}`, tone: "success" });
     } catch (err: any) {
-      showToast("error", err?.response?.data?.message || "Generation failed");
-    } finally {
-      setActionLoading(false);
+      pushToast({ title: "Generation Failed", message: err?.response?.data?.message || "Generation failed", tone: "error" });
     }
   };
 
   const handleLockPayroll = async () => {
-    setActionLoading(true);
     try {
-      await lockPayroll(month, year);
-      showToast("success", "Payroll locked and finalized.");
-      fetchPayrollData();
+      await lockMutation.mutateAsync({ month, year });
+      pushToast({ title: "Payroll Locked", message: "Payroll locked and finalized.", tone: "success" });
     } catch (err: any) {
-      showToast("error", err?.response?.data?.message || "Locking failed");
-    } finally {
-      setActionLoading(false);
+      pushToast({ title: "Lock Failed", message: err?.response?.data?.message || "Locking failed", tone: "error" });
     }
   };
 
   const handleRecalculate = async (recordId: number) => {
-    setActionLoading(true);
     try {
-      await recalculateRecord(recordId);
-      showToast("success", "Record recalculated successfully.");
-      fetchPayrollData();
+      await recalcMutation.mutateAsync(recordId);
+      pushToast({ title: "Recalculated", message: "Record recalculated successfully.", tone: "success" });
     } catch (err: any) {
-      showToast("error", err?.response?.data?.message || "Recalculation failed");
-    } finally {
-      setActionLoading(false);
+      pushToast({ title: "Recalculation Failed", message: err?.response?.data?.message || "Recalculation failed", tone: "error" });
     }
   };
 
@@ -150,7 +127,7 @@ export default function AdminPayroll() {
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className={`bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm transition-opacity duration-300 ${isFetching ? 'opacity-60' : ''}`}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl flex items-center justify-center text-emerald-600">
               <IndianRupee size={24} />
@@ -162,7 +139,7 @@ export default function AdminPayroll() {
           </div>
         </div>
 
-        <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className={`bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm transition-opacity duration-300 ${isFetching ? 'opacity-60' : ''}`}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl flex items-center justify-center text-indigo-600">
               <Users size={24} />
@@ -174,7 +151,7 @@ export default function AdminPayroll() {
           </div>
         </div>
 
-        <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className={`bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm transition-opacity duration-300 ${isFetching ? 'opacity-60' : ''}`}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/30 rounded-xl flex items-center justify-center text-amber-500">
               {isLocked ? <Lock size={24} /> : <FileText size={24} />}
@@ -191,7 +168,7 @@ export default function AdminPayroll() {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm transition-opacity duration-300 ${isFetching ? 'opacity-70' : ''}`}>
         <div className="max-md:hidden overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -281,7 +258,7 @@ export default function AdminPayroll() {
                          className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-500 rounded-lg transition-colors disabled:opacity-30"
                          title="Recalculate Record"
                        >
-                         <RotateCcw size={16} className={actionLoading ? "animate-spin" : ""} />
+                         <RotateCcw size={16} className={recalcMutation.isPending ? "animate-spin" : ""} />
                        </button>
                     </div>
                   </td>
@@ -370,7 +347,8 @@ export default function AdminPayroll() {
           isOpen={showAdjustmentModal}
           onClose={() => { setShowAdjustmentModal(false); setSelectedRecord(null); }}
           record={selectedRecord}
-          onSuccess={() => { fetchPayrollData(); }}
+          month={month}
+          year={year}
         />
       )}
 
@@ -379,7 +357,7 @@ export default function AdminPayroll() {
         onClose={() => setShowRunModal(false)}
         onConfirm={handleRunPayroll}
         title="Run Payroll Calculation?"
-        message={`This will trigger the calculation engine for ${records.length ? 're-evaluating' : 'generating'} April 2026 payroll. This may take a few moments.`}
+        message={`This will trigger the calculation engine for ${records.length ? 're-evaluating' : 'generating'} ${MONTHS[month - 1]} ${year} payroll. This may take a few moments.`}
         confirmText="Start Calculation"
         isDestructive={false}
       />
@@ -393,16 +371,6 @@ export default function AdminPayroll() {
         confirmText="Lock & Finalize"
         isDestructive={true}
       />
-
-      {/* Floating Toast */}
-      {toast && (
-        <div className={`fixed bottom-6 right-6 z-[200] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 ${
-          toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-          <p className="text-sm font-bold">{toast.msg}</p>
-        </div>
-      )}
     </div>
   );
 }

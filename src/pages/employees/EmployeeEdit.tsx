@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { updateEmployee, getEmployeeById } from "../../api/employees";
+import React, { useState } from "react";
 import {
   PAYMENT_TYPE_OPTIONS,
   ROLE_OPTIONS,
@@ -8,8 +7,6 @@ import {
 } from "../../types/employee";
 import { DatePickerField } from "../../components/ui/DatePickerField";
 import { SelectField } from "../../components/ui/SelectField";
-import { getShifts, getDepartments, getLocations, type Shift, type Department, type CompanyLocation } from "../../api/settings";
-import { getEmployeeBalances, getEmployeeAuditTrail } from "../../api/leaves";
 import { 
   Palmtree, 
   FileText, 
@@ -18,12 +15,16 @@ import {
   ArrowUpCircle,
   AlertCircle,
   UserCircle,
-  ShieldCheck
+  ShieldCheck,
+  Copy
 } from "lucide-react";
-import type { LeaveBalanceResponse, LeaveBalanceAuditResponse, LeaveResponse } from "../../types/leave";
-import { getEmployeeRequests } from "../../api/leaves";
+import type { LeaveBalanceResponse, LeaveBalanceAuditResponse } from "../../types/leave";
 import { useGrantLeave, useOverrideBalance, useRunAccrual } from "../../hooks/queries/useLeaves";
+import { useEmployeeBalances, useEmployeeAuditTrail, useEmployeeLeaveRequests } from "../../hooks/queries/useLeaves";
+import { useEmployeeById, useUpdateEmployee } from "../../hooks/queries/useEmployees";
+import { useDepartments, useShifts, useCompanyLocation } from "../../hooks/queries/useSettings";
 import { AppModal } from "../../components/ui/AppModal";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 
 export default function EmployeeEdit({
   employeeId,
@@ -36,89 +37,49 @@ export default function EmployeeEdit({
 }) {
   const [form, setForm] = useState<EmployeeFormState | null>(null);
   const [status, setStatus] = useState<EmployeeStatus | "">("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [depts, setDepts] = useState<Department[]>([]);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [locs, setLocs] = useState<CompanyLocation[]>([]);
-
-  // Tabs & Leaves State
   const [activeTab, setActiveTab] = useState<"info" | "leaves">("info");
-  const [balances, setBalances] = useState<LeaveBalanceResponse[]>([]);
-  const [audits, setAudits] = useState<LeaveBalanceAuditResponse[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveResponse[]>([]);
-  const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
 
-  const loadOptions = useCallback(async () => {
-    try {
-      const [d, s, l] = await Promise.all([
-        getDepartments(),
-        getShifts(),
-        getLocations()
-      ]);
-      setDepts(d);
-      setShifts(s);
-      setLocs(l);
-    } catch (err) {
-      console.error("Failed to load options", err);
-    }
-  }, []);
+  // ── TanStack Query: declarative data layer ─────────────────────
+  const { data: empData, isLoading: loading } = useEmployeeById(employeeId);
+  const { data: depts = [] } = useDepartments();
+  const { data: shifts = [] } = useShifts();
+  const { data: locs = [] } = useCompanyLocation();
+  const updateMutation = useUpdateEmployee();
 
-  useEffect(() => {
-    loadOptions();
-  }, [loadOptions]);
+  // Leave queries — only fire when the leaves tab is active
+  const isLeavesTab = activeTab === "leaves";
+  const { data: balances = [], isLoading: loadingBalances } = useEmployeeBalances(employeeId, isLeavesTab);
+  const { data: audits = [], isLoading: loadingAudits } = useEmployeeAuditTrail(employeeId, isLeavesTab);
+  const { data: leaveRequests = [], isLoading: loadingRequests } = useEmployeeLeaveRequests(employeeId, isLeavesTab);
+  const loadingLeaves = loadingBalances || loadingAudits || loadingRequests;
 
-  useEffect(() => {
-    async function loadEmployee() {
-      try {
-        const emp = await getEmployeeById(employeeId);
-        setForm({
-          fullName: emp.fullName,
-          phone: emp.phone || "",
-          email: emp.email || "",
-          dateOfBirth: emp.dateOfBirth || "",
-          dateOfJoining: emp.dateOfJoining,
-          departmentId: String(emp.departmentId),
-          designation: emp.designation,
-          shiftId: String(emp.shiftId),
-          locationId: String(emp.locationId),
-          paymentType: emp.paymentType,
-          hourlyRate: String(emp.hourlyRate),
-          overtimeRateMultiplier: String(emp.overtimeRateMultiplier),
-          role: emp.role,
-          baseSalary: emp.baseSalary !== null ? String(emp.baseSalary) : "",
-          hraPercentage: emp.hraPercentage !== null ? String(emp.hraPercentage) : "40",
-          pfPercentage: emp.pfPercentage !== null ? String(emp.pfPercentage) : "12",
-          initialBalances: {},
-        });
-        setStatus(emp.status);
-      } catch (err) {
-        setApiError("Failed to load employee details.");
-      } finally {
-        setLoading(false);
-      }
+  // Hydrate the form when empData arrives (one-time)
+  React.useEffect(() => {
+    if (empData && !form) {
+      setForm({
+        fullName: empData.fullName,
+        phone: empData.phone || "",
+        email: empData.email || "",
+        dateOfBirth: empData.dateOfBirth || "",
+        dateOfJoining: empData.dateOfJoining,
+        departmentId: String(empData.departmentId),
+        designation: empData.designation,
+        shiftId: String(empData.shiftId),
+        locationId: String(empData.locationId),
+        paymentType: empData.paymentType,
+        hourlyRate: String(empData.hourlyRate),
+        overtimeRateMultiplier: String(empData.overtimeRateMultiplier),
+        role: empData.role,
+        baseSalary: empData.baseSalary !== null ? String(empData.baseSalary) : "",
+        hraPercentage: empData.hraPercentage !== null ? String(empData.hraPercentage) : "40",
+        pfPercentage: empData.pfPercentage !== null ? String(empData.pfPercentage) : "12",
+        initialBalances: {},
+      });
+      setStatus(empData.status);
     }
-    loadEmployee();
-  }, [employeeId]);
-
-  // Load Leaves for the employee
-  useEffect(() => {
-    if (activeTab === "leaves" && balances.length === 0) {
-      setLoadingLeaves(true);
-      Promise.all([
-        getEmployeeBalances(employeeId),
-        getEmployeeAuditTrail(employeeId),
-        getEmployeeRequests(employeeId)
-      ]).then(([b, a, r]) => {
-        setBalances(b);
-        setAudits(a);
-        setLeaveRequests(r);
-      }).catch(err => console.error("Failed to load leaves", err))
-        .finally(() => setLoadingLeaves(false));
-    }
-  }, [activeTab, employeeId, balances.length]);
+  }, [empData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     if (!form) return;
@@ -128,7 +89,6 @@ export default function EmployeeEdit({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form || !status) return;
-    setIsSubmitting(true);
     setApiError(null);
     try {
       const payload = {
@@ -151,23 +111,26 @@ export default function EmployeeEdit({
         pfPercentage: Number(form.pfPercentage) || 12,
       };
 
-      const updated = await updateEmployee(employeeId, payload);
+      const updated = await updateMutation.mutateAsync({ id: employeeId, data: payload });
       onSuccess(updated.employeeCode);
     } catch (err: any) {
       setApiError(err.response?.data?.message || "Failed to update employee.");
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
   const labelCls = "block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5";
+  const copyLeaveStatement = async () => {
+    if (!form) return;
+    const summary = balances.map((b) => `${b.leaveTypeName}: ${b.balance}/${b.allocated} days`).join("\n");
+    await navigator.clipboard.writeText(`Leave statement for ${form.fullName}\n${summary}`);
+  };
 
   if (loading) return <div className="p-12 text-center text-gray-400 font-mono animate-pulse">Synchronizing Data...</div>;
   if (!form) return <div className="p-12 text-center text-red-500 font-bold">{apiError}</div>;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in duration-500 pb-10">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-6 overflow-x-hidden pb-10 animate-in fade-in duration-500 sm:space-y-8">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-gray-900 dark:text-white text-2xl font-black tracking-tight">Manage Professional Profile</h1>
           <div className="flex items-center gap-2 mt-1">
@@ -182,10 +145,10 @@ export default function EmployeeEdit({
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/40 p-1.5 rounded-2xl w-fit">
+      <div className="flex w-full items-center gap-1 overflow-x-auto rounded-2xl bg-gray-100 p-1.5 dark:bg-gray-800/40 sm:w-fit">
         <button 
           onClick={() => setActiveTab("info")}
-          className={`group flex items-center gap-2 px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
+          className={`group flex min-w-max flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-[11px] font-black uppercase tracking-widest transition-all duration-300 sm:flex-none sm:px-8 ${
             activeTab === "info" 
               ? "bg-white dark:bg-gray-900 text-indigo-600 shadow-md shadow-indigo-500/10" 
               : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -196,7 +159,7 @@ export default function EmployeeEdit({
         </button>
         <button 
           onClick={() => setActiveTab("leaves")}
-          className={`group flex items-center gap-2 px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
+          className={`group flex min-w-max flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-[11px] font-black uppercase tracking-widest transition-all duration-300 sm:flex-none sm:px-8 ${
             activeTab === "leaves" 
               ? "bg-white dark:bg-gray-900 text-indigo-600 shadow-md shadow-indigo-500/10" 
               : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -208,7 +171,7 @@ export default function EmployeeEdit({
       </div>
 
       {activeTab === "info" && (
-        <div className="card p-8 animate-in slide-in-from-left-4 duration-500">
+        <div className="card p-4 animate-in slide-in-from-left-4 duration-500 sm:p-8">
           {apiError && (
             <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-2xl px-4 py-3 mb-8 text-rose-600 dark:text-rose-400 text-sm font-bold flex items-center gap-2">
               <AlertCircle size={18} /> {apiError}
@@ -342,7 +305,7 @@ export default function EmployeeEdit({
             </section>
 
             {/* Form Actions */}
-            <div className="flex justify-end gap-3 pt-8 border-t border-gray-100 dark:border-gray-800">
+            <div className="sticky bottom-0 -mx-4 flex justify-end gap-3 border-t border-gray-100 bg-white/95 px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:backdrop-blur-0">
               <button
                 type="button"
                 onClick={onCancel}
@@ -352,10 +315,10 @@ export default function EmployeeEdit({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={updateMutation.isPending}
                 className="px-10 py-3 text-[11px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50"
               >
-                {isSubmitting ? "Serializing..." : "Update Record"}
+                {updateMutation.isPending ? "Serializing..." : "Update Record"}
               </button>
             </div>
           </form>
@@ -364,21 +327,30 @@ export default function EmployeeEdit({
 
       {activeTab === "leaves" && (
         <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-sm font-black uppercase tracking-widest text-gray-400">Balance Overview</h3>
-            <button 
-              onClick={() => setShowAdjustModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-            >
-              <ShieldCheck size={14} />
-              Manage Balances
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={copyLeaveStatement}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-600 transition-all dark:bg-gray-800 dark:text-gray-300 sm:flex-none"
+              >
+                <Copy size={14} />
+                Copy Statement
+              </button>
+              <button
+                onClick={() => setShowAdjustModal(true)}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 shadow-sm transition-all hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/30 dark:text-indigo-400 sm:flex-none"
+              >
+                <ShieldCheck size={14} />
+                Manage
+              </button>
+            </div>
           </div>
 
           {/* Balances Display Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
             {balances.map(b => (
-              <div key={b.leaveTypeCode} className="card p-6 bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50 border-gray-100 dark:border-gray-800 hover:scale-[1.02] transition-transform">
+              <div key={b.leaveTypeCode} className="card p-4 bg-gradient-to-br from-white to-gray-50/50 transition-transform hover:scale-[1.02] dark:from-gray-900 dark:to-gray-800/50 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[10px] font-black tracking-widest text-gray-400 uppercase">{b.leaveTypeCode}</span>
                   <Palmtree size={14} className="text-indigo-500/50" />
@@ -412,7 +384,7 @@ export default function EmployeeEdit({
               </div>
               {loadingLeaves && <Clock size={18} className="text-indigo-400 animate-spin" />}
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[9px] uppercase tracking-[0.15em] border-b border-gray-100 dark:border-gray-800">
@@ -474,6 +446,26 @@ export default function EmployeeEdit({
                 </tbody>
               </table>
             </div>
+            <div className="space-y-3 p-4 md:hidden">
+              {audits.map((a) => (
+                <div key={a.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase text-gray-900 dark:text-white">{a.transactionType}</p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-500">{a.leaveTypeCode}</p>
+                    </div>
+                    <p className={`text-sm font-black tabular-nums ${a.amount > 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                      {a.amount > 0 ? "+" : ""}{a.amount.toFixed(1)}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{a.reason || "System adjusted"}</p>
+                  <div className="mt-3 flex justify-between text-[10px] font-bold text-gray-400">
+                    <span>Balance {a.balanceAfter.toFixed(1)}</span>
+                    <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
             <div className="p-4 bg-gray-50/30 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800 text-center">
               <p className="text-[9px] font-bold text-gray-400 flex items-center justify-center gap-2 uppercase tracking-widest">
                 <ShieldCheck size={12} className="text-emerald-500" /> Financial Proof of Stake Verified
@@ -489,7 +481,7 @@ export default function EmployeeEdit({
                   Request History
                 </h3>
              </div>
-             <div className="overflow-x-auto">
+             <div className="hidden overflow-x-auto md:block">
                <table className="w-full text-left text-xs">
                  <thead>
                    <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[9px] uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">
@@ -530,6 +522,20 @@ export default function EmployeeEdit({
                  </tbody>
                </table>
              </div>
+             <div className="space-y-3 p-4 md:hidden">
+               {leaveRequests.map((r) => (
+                 <div key={r.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                   <div className="flex items-start justify-between gap-3">
+                     <div>
+                       <p className="text-sm font-black text-gray-900 dark:text-white">{r.leaveTypeName}</p>
+                       <p className="mt-1 text-xs font-semibold text-gray-500">{r.startDate}{r.startDate !== r.endDate ? ` to ${r.endDate}` : ""}</p>
+                     </div>
+                     <span className="rounded-lg border border-gray-200 px-2 py-1 text-[10px] font-black uppercase text-gray-500 dark:border-gray-700">{r.status}</span>
+                   </div>
+                   <p className="mt-3 text-xs font-bold text-indigo-500">{r.appliedDays} day(s)</p>
+                 </div>
+               ))}
+             </div>
           </div>
         </div>
       )}
@@ -539,7 +545,6 @@ export default function EmployeeEdit({
           balances={balances}
           onClose={() => setShowAdjustModal(false)} 
           onSuccess={() => {
-            setBalances([]); // Trigger reload
             setShowAdjustModal(false);
           }}
         />
@@ -563,6 +568,7 @@ function BalanceAdjustmentModal({
   const [leaveTypeId, setLeaveTypeId] = useState(balances[0]?.leaveTypeId || 0);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [showAccrualConfirm, setShowAccrualConfirm] = useState(false);
   
   const grantMutation = useGrantLeave();
   const overrideMutation = useOverrideBalance();
@@ -583,7 +589,6 @@ function BalanceAdjustmentModal({
   };
 
   const handleAccrual = async () => {
-    if (!window.confirm("Run global accrual engine? This affects all employees.")) return;
     try {
       await accrualMutation.mutateAsync();
       onSuccess();
@@ -593,6 +598,7 @@ function BalanceAdjustmentModal({
   };
 
   return (
+    <>
     <AppModal isOpen={true} onClose={onClose} title="Balance Management" size="md">
       <div className="space-y-6 py-4">
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
@@ -661,7 +667,7 @@ function BalanceAdjustmentModal({
           </div>
 
           <button 
-            onClick={handleAccrual}
+            onClick={() => setShowAccrualConfirm(true)}
             disabled={accrualMutation.isPending}
             className="w-full py-3 border border-amber-200 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all"
           >
@@ -670,5 +676,16 @@ function BalanceAdjustmentModal({
         </div>
       </div>
     </AppModal>
+    <ConfirmModal
+      isOpen={showAccrualConfirm}
+      onClose={() => setShowAccrualConfirm(false)}
+      onConfirm={handleAccrual}
+      title="Trigger Global Accrual"
+      message="This runs the leave accrual engine for all employees and writes ledger entries. Continue only if you have verified the payroll/leave period."
+      confirmText="Run Accrual"
+      requireConfirmText="ACCRUAL"
+      isDestructive={true}
+    />
+    </>
   );
 }

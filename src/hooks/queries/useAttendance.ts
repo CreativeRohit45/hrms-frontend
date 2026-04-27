@@ -4,13 +4,13 @@
 //  Mutations: correction request, approve/reject correction, overtime.
 // ═══════════════════════════════════════════════════════════════════
 
-import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
 import { queryClient } from '../../lib/queryClient';
 import {
   getMyAttendanceLogs, getEmployeeLogs, getDailyAttendanceLogs,
   requestCorrection, approveCorrection, rejectCorrection, approveOvertime,
-  rejectOvertime, getUnifiedInbox,
+  rejectOvertime, getUnifiedInbox, punchIn, punchOut,
 } from '../../api/attendance';
 import { getDashboardStats, getEmployeeDashboardStats } from '../../api/dashboard';
 import type { AttendanceLogResponse } from '../../types/attendance';
@@ -37,11 +37,13 @@ export function useDailyRosterLogs(
   page = 0,
   size = 50,
   shiftId?: number | string,
+  departmentId?: number | string,
+  status?: string,
   enabled = true
 ) {
   return useQuery({
-    queryKey: [...queryKeys.attendance.roster(date), page, size, shiftId],
-    queryFn: () => getDailyAttendanceLogs(date, page, size, shiftId),
+    queryKey: [...queryKeys.attendance.roster(date), page, size, shiftId, departmentId, status],
+    queryFn: () => getDailyAttendanceLogs(date, page, size, shiftId, departmentId, status),
     enabled: enabled && !!date,
   });
 }
@@ -56,15 +58,11 @@ export function useAttendanceDashboardStats(employeeCode: string) {
   });
 }
 
-export function useUnifiedInbox(status?: string) {
-  return useInfiniteQuery({
-    queryKey: ['attendance', 'inbox', status],
-    queryFn: ({ pageParam = 0 }) => getUnifiedInbox(pageParam, 20, status),
-    getNextPageParam: (lastPage) => {
-      const next = lastPage.number + 1;
-      return next < lastPage.totalPages ? next : undefined;
-    },
-    initialPageParam: 0,
+export function useUnifiedInbox(status?: string, requestType?: string, departmentId?: number, page = 0) {
+  return useQuery({
+    queryKey: ['attendance', 'inbox', status, requestType, departmentId, page],
+    queryFn: () => getUnifiedInbox(page, 10, status, requestType, departmentId),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -83,6 +81,28 @@ function invalidateAttendanceEcosystem(employeeCode: string) {
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.dashboardStats(employeeCode) });
   // Unified Inbox invalidation
   queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
+}
+
+// ── Punch Mutations ──────────────────────────────────────────────
+
+export function usePunchIn() {
+  return useMutation({
+    mutationFn: ({ lat, lng }: { lat: number; lng: number }) =>
+      punchIn(lat, lng),
+    onSuccess: () => {
+      invalidateAttendanceEcosystem('me');
+    },
+  });
+}
+
+export function usePunchOut() {
+  return useMutation({
+    mutationFn: ({ lat, lng }: { lat: number; lng: number }) =>
+      punchOut(lat, lng),
+    onSuccess: () => {
+      invalidateAttendanceEcosystem('me');
+    },
+  });
 }
 
 // ── Mutations ────────────────────────────────────────────────────

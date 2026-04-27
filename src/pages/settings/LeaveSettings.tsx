@@ -19,10 +19,10 @@ import {
   useAdminLeaveTypes,
   useCreateLeaveType,
   useUpdateLeaveType,
-  useOverrideBalance
+  useOverrideBalance,
+  useRunAccrual,
 } from "../../hooks/queries/useLeaves";
 import type { LeaveTypeDTO } from "../../types/leave";
-import apiClient from "../../api/axios";
 
 export default function LeaveSettings() {
   const { pushToast } = useAppToast();
@@ -31,7 +31,9 @@ export default function LeaveSettings() {
   const { data: activeTypes = [], isLoading: activeLoading } = useLeaveTypes();
   const { data: adminTypes = [], isLoading: adminLoading } = useAdminLeaveTypes();
 
-  const [accrualLoading, setAccrualLoading] = useState(false);
+  const accrualMutation = useRunAccrual();
+  const accrualLoading = accrualMutation.isPending;
+
   const [modalState, setModalState] = useState<{
     mode: "CREATE" | "EDIT" | "OVERRIDE" | "NONE";
     selectedType?: LeaveTypeDTO;
@@ -40,9 +42,8 @@ export default function LeaveSettings() {
 
   const handleRunAccrual = async () => {
     if (!confirm("This will trigger the monthly leave credit for all active employees. Continue?")) return;
-    setAccrualLoading(true);
     try {
-      await apiClient.post("/api/v1/leaves/admin/accrual/run");
+      await accrualMutation.mutateAsync();
       pushToast({ title: "Accrual Complete", message: "Monthly leave credits processed.", tone: "success" });
     } catch (err: any) {
       pushToast({
@@ -50,8 +51,6 @@ export default function LeaveSettings() {
         message: err?.response?.data?.message || "Already run today.",
         tone: "error"
       });
-    } finally {
-      setAccrualLoading(false);
     }
   };
 

@@ -30,7 +30,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
+      <div className="md:hidden">
+        <select
+          value={activeTab}
+          onChange={(e) => setActiveTab(e.target.value as TabId)}
+          className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm font-bold text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+        >
+          {TABS.map((tab) => (
+            <option key={tab.id} value={tab.id}>{tab.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="hidden bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit md:flex">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -47,7 +58,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+      <div className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
         {activeTab === "shifts" && <ShiftsTab />}
         {activeTab === "holidays" && <HolidaysTab />}
         {activeTab === "leave-types" && <LeaveTypesTab />}

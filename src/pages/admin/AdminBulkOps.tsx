@@ -7,6 +7,7 @@ import { useLeaveTypes, useBulkGrantLeaves } from "../../hooks/queries/useLeaves
 import { useAppToast } from "../../components/ui/ToastProvider";
 import { SelectField } from "../../components/ui/SelectField";
 import type { EmployeeResponse } from "../../types/employee";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 
 export default function AdminBulkOps() {
   const { pushToast } = useAppToast();
@@ -22,6 +23,7 @@ export default function AdminBulkOps() {
     amount: "",
     reason: "",
   });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -38,17 +40,24 @@ export default function AdminBulkOps() {
     setSelectedIds(newSet);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateBulkGrant = () => {
     if (selectedIds.size === 0) {
       pushToast({ tone: "error", title: "Validation Error", message: "Please select at least one employee." });
-      return;
+      return false;
     }
     if (!form.leaveTypeId || !form.amount) {
       pushToast({ tone: "error", title: "Validation Error", message: "Please fill all required fields." });
-      return;
+      return false;
     }
+    return true;
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateBulkGrant()) setConfirmOpen(true);
+  };
+
+  const commitBulkGrant = async () => {
     try {
       await bulkGrant({
         employeeIds: Array.from(selectedIds),
@@ -167,6 +176,16 @@ export default function AdminBulkOps() {
           </form>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={commitBulkGrant}
+        title="Confirm Bulk Leave Grant"
+        message={`Grant ${form.amount || "0"} day(s) to ${selectedIds.size} selected employee(s). This writes leave ledger entries and cannot be silently undone.`}
+        confirmText="Grant Leave"
+        requireConfirmText="GRANT"
+        isDestructive={true}
+      />
     </div>
   );
 }

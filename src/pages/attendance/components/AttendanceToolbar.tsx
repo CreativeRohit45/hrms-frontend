@@ -8,26 +8,23 @@ import type { AttendanceLogResponse } from "../../../types/attendance";
 import { SelectField } from "../../../components/ui/SelectField";
 
 interface AttendanceToolbarProps {
-  viewMode: "calendar" | "list" | "roster";
-  setViewMode: (mode: "calendar" | "list" | "roster") => void;
+  viewMode: "calendar" | "list";
+  setViewMode: (mode: "calendar" | "list") => void;
   filterMonth: string;
   setFilterMonth: (v: string) => void;
   monthOptions: { value: string; label: string }[];
   filtered: AttendanceLogResponse[];
   activeEmployeeCode: string;
   isLoading: boolean;
-  isManager: boolean;
 }
 
 export function AttendanceToolbar({
   viewMode, setViewMode,
   filterMonth, setFilterMonth,
   monthOptions, filtered,
-  activeEmployeeCode, isLoading, isManager,
+  activeEmployeeCode, isLoading,
 }: AttendanceToolbarProps) {
-  const modes = isManager
-    ? (["calendar", "list", "roster"] as const)
-    : (["calendar", "list"] as const);
+  const modes = ["calendar", "list"] as const;
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5

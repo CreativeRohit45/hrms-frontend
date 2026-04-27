@@ -13,7 +13,8 @@ import {
   applyForLeave, cancelLeave, approveLeave, rejectLeave,
   revokeLeave, grantLeave, getMyAuditTrail, overrideBalance,
   adminGetAllLeaveTypes, adminCreateLeaveType, adminUpdateLeaveType, adminDeleteLeaveType,
-  previewLeave, runManualAccrual
+  previewLeave, runManualAccrual,
+  getEmployeeBalances, getEmployeeAuditTrail, getEmployeeRequests,
 } from '../../api/leaves';
 import type {
   LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
@@ -69,6 +70,32 @@ export function useAdminLeaveTypes() {
   });
 }
 
+// ── Admin-level employee queries (EmployeeEdit) ──────────────────
+
+export function useEmployeeBalances(employeeId: number, enabled = true) {
+  return useQuery<LeaveBalanceResponse[]>({
+    queryKey: queryKeys.leaves.employeeBalances(employeeId),
+    queryFn: () => getEmployeeBalances(employeeId),
+    enabled: enabled && employeeId > 0,
+  });
+}
+
+export function useEmployeeAuditTrail(employeeId: number, enabled = true) {
+  return useQuery<LeaveBalanceAuditResponse[]>({
+    queryKey: ['leaves', 'admin', 'audit', employeeId],
+    queryFn: () => getEmployeeAuditTrail(employeeId),
+    enabled: enabled && employeeId > 0,
+  });
+}
+
+export function useEmployeeLeaveRequests(employeeId: number, enabled = true) {
+  return useQuery<LeaveResponse[]>({
+    queryKey: ['leaves', 'admin', 'requests', employeeId],
+    queryFn: () => getEmployeeRequests(employeeId),
+    enabled: enabled && employeeId > 0,
+  });
+}
+
 // ── Cross-domain invalidation helper ─────────────────────────────
 // When a leave action succeeds, multiple caches across the app need
 // to be marked stale. This helper centralizes that logic.
@@ -80,6 +107,7 @@ function invalidateLeaveEcosystem() {
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
   // Attendance calendars may show "ON_LEAVE" badges
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
+  queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
 }
 
 // ── Mutations ────────────────────────────────────────────────────

@@ -7,7 +7,6 @@ import {
   Sparkles,
   FileText,
 } from "lucide-react";
-import { useAppToast } from "../../components/ui/ToastProvider";
 
 // ── TanStack Query hooks (parallel fetching) ──────────────────────
 import { useMyLeaves } from "../../hooks/queries/useLeaves";
@@ -49,7 +48,6 @@ export default function MyRequests() {
   const [showGatepassModal, setShowGatepassModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [activeTab, setActiveTab] = useState<TabValue>("ALL");
-  const { pushToast } = useAppToast();
 
   const { data: stats } = useDashboardStats();
   const isActive = !!stats?.currentSession?.active;
@@ -100,7 +98,7 @@ export default function MyRequests() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl overflow-x-hidden space-y-6 px-4 sm:px-6 md:px-8 pb-28 pt-4">
+    <div className="mx-auto w-full max-w-3xl overflow-x-hidden space-y-5 px-3 pb-28 pt-3 sm:space-y-6 sm:px-6 md:px-8">
 
       {/* ── MODAL PORTAL ──────────────────────────────────────────── */}
       <div className="relative z-[1000]">
@@ -125,7 +123,7 @@ export default function MyRequests() {
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-indigo-600 px-5 py-7 text-white shadow-xl shadow-indigo-600/20 sm:px-8 sm:py-9">
+      <div className="relative overflow-hidden rounded-2xl bg-indigo-600 px-4 py-6 text-white shadow-xl shadow-indigo-600/20 sm:rounded-3xl sm:px-8 sm:py-9">
         <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-8 -left-8 h-36 w-36 rounded-full bg-indigo-400/30 blur-2xl" />
 
@@ -143,7 +141,7 @@ export default function MyRequests() {
           </div>
 
           {/* Stats row */}
-          <div className="flex gap-3">
+          <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
             {[
               { label: "Approved", value: requests.filter((r) => r.status === "APPROVED").length },
               { label: "Pending", value: requests.filter((r) => r.status === "PENDING").length },
@@ -151,7 +149,7 @@ export default function MyRequests() {
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="flex-1 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 text-center backdrop-blur-sm sm:px-4"
+                className="min-w-0 rounded-2xl border border-white/10 bg-white/10 px-2 py-3 text-center backdrop-blur-sm sm:px-4"
               >
                 <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200/70">
                   {stat.label}
@@ -190,7 +188,7 @@ export default function MyRequests() {
       </div>
 
       {/* ── ACTIVITY FEED ─────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-gray-100 bg-white shadow-sm dark:border-gray-800/60 dark:bg-gray-900">
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800/60 dark:bg-gray-900 sm:rounded-3xl">
         <div className="flex items-center gap-2 px-4 pt-5 pb-4 sm:px-6">
           <FileText className="h-4 w-4 text-indigo-500" />
           <h2 className="text-base font-black text-gray-900 dark:text-white">Activity</h2>

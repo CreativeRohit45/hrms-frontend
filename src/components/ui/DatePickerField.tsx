@@ -34,9 +34,10 @@ interface DatePickerFieldProps {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  align?: "left" | "right";
 }
 
-export function DatePickerField({ label, value, onChange, required }: DatePickerFieldProps) {
+export function DatePickerField({ label, value, onChange, required, align = "left" }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const [pickerMonth, setPickerMonth] = useState(getMonthFromValue(value));
   const [yearMonthPicker, setYearMonthPicker] = useState(false);
@@ -121,7 +122,7 @@ export function DatePickerField({ label, value, onChange, required }: DatePicker
       )}
 
       {open && (
-        <div className="absolute left-0 top-full z-[70] mt-2 w-[300px] overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} top-full z-[70] mt-2 w-[300px] overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-200`}>
           {/* ── Header with year arrows + clickable month/year ── */}
           <div className="flex items-center justify-between border-b border-gray-100 px-3 py-3 dark:border-gray-800">
             <button

@@ -2,49 +2,55 @@ import { useState } from "react";
 import { AlertCircle, AlertTriangle, Ban, Calendar, CheckCircle2, Clock, Palmtree, SunDim, Sunset, Ticket, XCircle } from "lucide-react";
 import { AppModal } from "../ui/AppModal";
 import { useAppToast } from "../ui/ToastProvider";
-import { useRevokeLeave } from "../../hooks/queries/useLeaves";
+import { useCancelLeave, useRevokeLeave } from "../../hooks/queries/useLeaves";
+import { useCancelGatepass } from "../../hooks/queries/useGatepasses";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { fmt, fmtTime } from "./utils";
 import type { Request } from "./RequestTypes";
 
 const statusConfig: Record<
   string,
-  { icon: React.ReactNode; bg: string; text: string; border: string; label: string }
+  { icon: React.ReactNode; bg: string; text: string; border: string; label: string; gradient: string }
 > = {
   APPROVED: {
-    icon: <CheckCircle2 className="h-6 w-6" />,
+    icon: <CheckCircle2 className="h-8 w-8" />,
     bg: "bg-emerald-50 dark:bg-emerald-950/30",
     text: "text-emerald-600 dark:text-emerald-400",
     border: "border-emerald-200 dark:border-emerald-800/60",
     label: "Approved",
+    gradient: "from-emerald-400 to-teal-500 shadow-emerald-500/20",
   },
   PENDING: {
-    icon: <AlertTriangle className="h-6 w-6" />,
+    icon: <AlertTriangle className="h-8 w-8" />,
     bg: "bg-amber-50 dark:bg-amber-950/30",
     text: "text-amber-600 dark:text-amber-400",
     border: "border-amber-200 dark:border-amber-800/60",
     label: "Pending Review",
+    gradient: "from-amber-400 to-orange-500 shadow-amber-500/20",
   },
   REJECTED: {
-    icon: <XCircle className="h-6 w-6" />,
+    icon: <XCircle className="h-8 w-8" />,
     bg: "bg-red-50 dark:bg-red-950/30",
     text: "text-red-600 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/60",
     label: "Rejected",
+    gradient: "from-red-500 to-rose-600 shadow-red-500/20",
   },
   CANCELLED: {
-    icon: <Ban className="h-6 w-6" />,
+    icon: <Ban className="h-8 w-8" />,
     bg: "bg-gray-50 dark:bg-gray-800/40",
     text: "text-gray-500 dark:text-gray-400",
     border: "border-gray-200 dark:border-gray-700/60",
     label: "Cancelled",
+    gradient: "from-gray-400 to-slate-500 shadow-gray-500/20",
   },
   REVOKED: {
-    icon: <AlertCircle className="h-6 w-6" />,
+    icon: <AlertCircle className="h-8 w-8" />,
     bg: "bg-rose-50 dark:bg-rose-950/30",
     text: "text-rose-600 dark:text-rose-400",
     border: "border-rose-200 dark:border-rose-800/60",
     label: "Revoked by Admin",
+    gradient: "from-rose-500 to-pink-600 shadow-rose-500/20",
   },
 };
 
@@ -68,11 +74,26 @@ export function RequestDetailsModal({
 }) {
   const { pushToast } = useAppToast();
   const revokeMutation = useRevokeLeave();
+  const cancelLeaveMutation = useCancelLeave();
+  const cancelGatepassMutation = useCancelGatepass();
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
   const isLeave = request.type === "LEAVE";
   const cfg = statusConfig[request.status] ?? statusConfig["PENDING"];
   const m = request.metadata ?? {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const leaveStart = m.startDate ? new Date(`${m.startDate}T00:00:00`) : null;
+  const gatepassOut = m.requestedOutTime ? new Date(m.requestedOutTime) : null;
+  const leaveIsFuture = !!leaveStart && leaveStart.getTime() > today.getTime();
+  const gatepassIsFuture = !!gatepassOut && gatepassOut.getTime() > Date.now();
+  const canCancelLeave = isLeave && request.status === "PENDING" && leaveIsFuture;
+  const canRevokeLeave = isLeave && request.status === "APPROVED" && leaveIsFuture;
+  const canCancelGatepass = !isLeave && (request.status === "PENDING" || request.status === "APPROVED") && gatepassIsFuture && !m.actualOutTime;
+  const isLockedByTime =
+    (isLeave && (request.status === "PENDING" || request.status === "APPROVED") && !leaveIsFuture) ||
+    (!isLeave && (request.status === "PENDING" || request.status === "APPROVED") && (!gatepassIsFuture || !!m.actualOutTime));
 
   const handleRevoke = async () => {
     try {
@@ -85,153 +106,189 @@ export function RequestDetailsModal({
     }
   };
 
+  const handleCancel = async () => {
+    try {
+      if (isLeave) {
+        await cancelLeaveMutation.mutateAsync(request.id);
+        pushToast({ title: "Success", message: "Leave request cancelled.", tone: "success" });
+      } else {
+        await cancelGatepassMutation.mutateAsync(request.id);
+        pushToast({ title: "Success", message: "Gatepass cancelled.", tone: "success" });
+      }
+      setShowCancelConfirm(false);
+      onClose();
+    } catch (err: any) {
+      pushToast({ title: "Error", message: err.response?.data?.message || "Failed to cancel", tone: "error" });
+    }
+  };
+
   return (
     <>
       <AppModal
         isOpen={true}
         onClose={onClose}
         title={isLeave ? "Leave Details" : "Gatepass Details"}
-        size="lg"
+        size="xl"
       >
-        <div className="space-y-5 pb-4 pt-2">
+        <div className="pb-4">
+          <div className="relative overflow-hidden rounded-[2rem] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl shadow-gray-200/40 dark:shadow-black/40">
+            {/* ── Status hero ─────────────────────────────────────── */}
+            <div className={`relative flex items-center justify-between overflow-hidden bg-gradient-to-br ${cfg.gradient} p-6 sm:p-8 text-white`}>
+              <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-8 -left-8 h-36 w-36 rounded-full bg-black/10 blur-2xl" />
+              
+              <div className="relative z-10">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Current Status</p>
+                <h2 className="text-3xl sm:text-4xl font-black leading-none tracking-tight">{cfg.label}</h2>
+                <div className="mt-4 flex items-center gap-2 rounded-full bg-black/10 px-3 py-1.5 backdrop-blur-md w-max">
+                  {isLeave ? <Palmtree className="h-4 w-4" /> : <Ticket className="h-4 w-4" />}
+                  <span className="text-[11px] font-black uppercase tracking-widest text-white/90">
+                    {isLeave ? "Leave Request" : "Gatepass Request"}
+                  </span>
+                </div>
+              </div>
 
-          {/* ── Status hero ─────────────────────────────────────── */}
-          <div
-            className={`flex items-center gap-4 rounded-2xl border p-4 ${cfg.bg} ${cfg.border}`}
-          >
-            <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${cfg.bg} ${cfg.text}`}>
-              {cfg.icon}
+              <div className="relative z-10 flex h-16 w-16 sm:h-20 sm:w-20 shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md ring-4 ring-white/30">
+                {cfg.icon}
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                Current Status
-              </p>
-              <p className={`text-xl font-black ${cfg.text}`}>{cfg.label}</p>
-            </div>
-          </div>
 
-          {/* ── Type banner ─────────────────────────────────────── */}
-          <div
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isLeave
-              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
-              : "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
-              }`}
-          >
-            {isLeave ? <Palmtree className="h-5 w-5 flex-shrink-0" /> : <Ticket className="h-5 w-5 flex-shrink-0" />}
-            <span className="text-sm font-black uppercase tracking-wider">
-              {isLeave ? "Leave Request" : "Gatepass Request"}
-            </span>
-          </div>
-
-          {/* ── Meta grid ───────────────────────────────────────── */}
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-800/60 dark:bg-gray-800/30">
-            {isLeave ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <DetailRow label="Leave Type" value={m.leaveTypeName ?? "—"} />
-                <DetailRow
-                  label="Applied On"
-                  value={fmt(request.timestamp, { day: "numeric", month: "long", year: "numeric" })}
-                />
-                <DetailRow
-                  label="Start Date"
-                  value={
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-indigo-400" />
-                      {m.startDate ?? "—"}
-                    </span>
-                  }
-                />
-                <DetailRow
-                  label="End Date"
-                  value={
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-indigo-400" />
-                      {m.endDate ?? "—"}
-                    </span>
-                  }
-                />
-                {m.halfDay && (
+            {/* ── Meta grid ───────────────────────────────────────── */}
+            <div className="p-6 sm:p-8">
+              {isLeave ? (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                  <DetailRow label="Leave Type" value={m.leaveTypeName ?? "—"} />
                   <DetailRow
-                    label="Half Day"
+                    label="Applied On"
+                    value={fmt(request.timestamp, { day: "numeric", month: "long", year: "numeric" })}
+                  />
+                  <DetailRow
+                    label="Start Date"
                     value={
-                      <span className="flex items-center gap-1.5">
-                        {m.halfType === "FIRST" ? (
-                          <SunDim className="h-3.5 w-3.5 text-amber-400" />
-                        ) : (
-                          <Sunset className="h-3.5 w-3.5 text-orange-400" />
-                        )}
-                        {m.halfType === "FIRST" ? "First Half" : "Second Half"}
+                      <span className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-indigo-400" />
+                        {m.startDate ?? "—"}
                       </span>
                     }
                   />
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <DetailRow label="Pass Type" value={m.gatepassType ?? "—"} />
-                <DetailRow
-                  label="Applied On"
-                  value={fmt(request.timestamp, { day: "numeric", month: "long", year: "numeric" })}
-                />
-                <DetailRow
-                  label="Exit Time"
-                  value={
-                    m.requestedOutTime ? (
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-indigo-400" />
-                        {fmtTime(m.requestedOutTime)}
+                  <DetailRow
+                    label="End Date"
+                    value={
+                      <span className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-indigo-400" />
+                        {m.endDate ?? "—"}
                       </span>
-                    ) : (
-                      "—"
-                    )
-                  }
-                />
-                <DetailRow
-                  label="Return Time"
-                  value={
-                    m.requestedInTime ? (
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5 text-indigo-400" />
-                        {fmtTime(m.requestedInTime)}
-                      </span>
-                    ) : (
-                      "—"
-                    )
-                  }
-                />
-              </div>
-            )}
+                    }
+                  />
+                  {m.halfDay && (
+                    <DetailRow
+                      label="Half Day"
+                      value={
+                        <span className="flex items-center gap-2">
+                          {m.halfType === "FIRST" ? (
+                            <SunDim className="h-4 w-4 text-amber-400" />
+                          ) : (
+                            <Sunset className="h-4 w-4 text-orange-400" />
+                          )}
+                          {m.halfType === "FIRST" ? "First Half" : "Second Half"}
+                        </span>
+                      }
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                  <DetailRow label="Pass Type" value={m.gatepassType ?? "—"} />
+                  <DetailRow
+                    label="Applied On"
+                    value={fmt(request.timestamp, { day: "numeric", month: "long", year: "numeric" })}
+                  />
+                  <DetailRow
+                    label="Exit Time"
+                    value={
+                      m.requestedOutTime ? (
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-indigo-400" />
+                          {fmtTime(m.requestedOutTime)}
+                        </span>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                  <DetailRow
+                    label="Return Time"
+                    value={
+                      m.requestedInTime ? (
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-indigo-400" />
+                          {fmtTime(m.requestedInTime)}
+                        </span>
+                      ) : (
+                        "—"
+                      )
+                    }
+                  />
+                </div>
+              )}
+
+              {/* ── Reason / details ────────────────────────────────── */}
+              {(m.reason || request.details) && (
+                <>
+                  <hr className="my-6 border-dashed border-gray-200 dark:border-gray-800" />
+                  <div>
+                    <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      Reason / Details
+                    </p>
+                    <p className="text-sm font-medium leading-relaxed text-gray-700 dark:text-gray-300">
+                      {m.reason || request.details}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* ── Reason / details ────────────────────────────────── */}
-          {(m.reason || request.details) && (
-            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-800/60 dark:bg-gray-800/30">
-              <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                Reason / Details
-              </p>
-              <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                {m.reason || request.details}
-              </p>
-            </div>
-          )}
-
           {/* ── Actions ────────────────────────────────────────── */}
-          <div className="flex flex-col gap-3">
-            {request.status === "APPROVED" && isLeave && (
+          <div className="mt-6 flex flex-col gap-3">
+            {canCancelLeave && (
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(true)}
+                className="w-full min-h-[56px] rounded-2xl bg-amber-500 py-3 text-sm font-black text-white shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-600 active:scale-[0.98]"
+              >
+                Cancel Request
+              </button>
+            )}
+            {canRevokeLeave && (
               <button
                 type="button"
                 onClick={() => setShowRevokeConfirm(true)}
-                className="w-full min-h-[48px] rounded-2xl border border-rose-200 bg-rose-50 py-3 text-sm font-black text-rose-600 transition-all hover:bg-rose-600 hover:text-white disabled:opacity-50 dark:border-rose-900/50 dark:bg-rose-950/20"
+                className="w-full min-h-[56px] rounded-2xl bg-rose-500 py-3 text-sm font-black text-white shadow-lg shadow-rose-500/20 transition-all hover:bg-rose-600 active:scale-[0.98]"
               >
                 Revoke Request
               </button>
             )}
+            {canCancelGatepass && (
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(true)}
+                className="w-full min-h-[56px] rounded-2xl bg-amber-500 py-3 text-sm font-black text-white shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-600 active:scale-[0.98]"
+              >
+                Cancel Gatepass
+              </button>
+            )}
+            {isLockedByTime && (
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-4 text-center text-xs font-bold uppercase tracking-widest text-gray-400 dark:border-gray-800 dark:bg-gray-800/40">
+                {isLeave ? "Locked after start date" : "Locked after scheduled exit time"}
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
-              className="w-full min-h-[48px] rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-500 transition-all hover:border-gray-300 hover:text-gray-700 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="w-full min-h-[56px] rounded-2xl border border-gray-200 bg-white py-3 text-sm font-black text-gray-600 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 active:scale-[0.98] dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Close
+              Close Details
             </button>
           </div>
         </div>
@@ -245,6 +302,15 @@ export function RequestDetailsModal({
         message="Are you sure you want to revoke this approved leave? Your balance will be restored, but your manager will be notified. This action requires confirmation."
         confirmText="REVOKE"
         requireConfirmText="REVOKE"
+        isDestructive={true}
+      />
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancel}
+        title={isLeave ? "Cancel Leave Request" : "Cancel Gatepass"}
+        message={isLeave ? "Cancel this pending leave request and restore the held balance if applicable?" : "Cancel this gatepass before the scheduled exit time?"}
+        confirmText={isLeave ? "Cancel Request" : "Cancel Gatepass"}
         isDestructive={true}
       />
     </>

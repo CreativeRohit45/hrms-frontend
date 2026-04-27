@@ -1,6 +1,5 @@
 // src/pages/employees/EmployeeCreate.tsx
 import React, { useState } from "react";
-import { createEmployee } from "../../api/employees";
 import {
   EMPTY_FORM,
   PAYMENT_TYPE_OPTIONS,
@@ -9,10 +8,12 @@ import {
 } from "../../types/employee";
 import { DatePickerField } from "../../components/ui/DatePickerField";
 import { SelectField } from "../../components/ui/SelectField";
-import { getShifts, getDepartments, getLocations, type Shift, type Department, type CompanyLocation } from "../../api/settings";
-import { getLeaveTypes } from "../../api/leaves";
+
+// ── TanStack Query hooks (replaces manual useEffect data fetching) ──
+import { useDepartments, useShifts, useCompanyLocation } from "../../hooks/queries/useSettings";
+import { useLeaveTypes } from "../../hooks/queries/useLeaves";
+import { useCreateEmployee } from "../../hooks/queries/useEmployees";
 import type { LeaveTypeDTO } from "../../types/leave";
-import { useEffect, useCallback } from "react";
 
 export default function EmployeeCreate({
   onSuccess,
@@ -22,44 +23,29 @@ export default function EmployeeCreate({
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<EmployeeFormState>(EMPTY_FORM);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const [depts, setDepts] = useState<Department[]>([]);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [locs, setLocs] = useState<CompanyLocation[]>([]);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeDTO[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(true);
+  // ── Declarative data layer — no useEffect, no loading state ────
+  const { data: depts = [] } = useDepartments();
+  const { data: shifts = [] } = useShifts();
+  const { data: locs = [] } = useCompanyLocation();
+  const { data: leaveTypes = [] } = useLeaveTypes();
+  const createMutation = useCreateEmployee();
 
-  const loadOptions = useCallback(async () => {
-    setLoadingOptions(true);
-    try {
-      const [d, s, l, lt] = await Promise.all([
-        getDepartments(),
-        getShifts(),
-        getLocations(),
-        getLeaveTypes()
-      ]);
-      setDepts(d);
-      setShifts(s);
-      setLocs(l);
-      setLeaveTypes(lt);
+  const loadingOptions = !depts.length && !shifts.length;
 
-      // Auto-set first options if not already set
-      setForm(prev => ({
-        ...prev,
-        departmentId: prev.departmentId || (d[0]?.id?.toString() || ""),
-        shiftId: prev.shiftId || (s[0]?.id?.toString() || ""),
-        locationId: prev.locationId || (l[0]?.id?.toString() || ""),
-      }));
-    } catch (err) {
-      console.error("Failed to load form options", err);
-    } finally {
-      setLoadingOptions(false);
+  // Auto-set first options when data arrives
+  React.useEffect(() => {
+    if (depts.length && !form.departmentId) {
+      setForm(prev => ({ ...prev, departmentId: String(depts[0]?.id || "") }));
     }
-  }, []);
-
-  useEffect(() => { loadOptions(); }, [loadOptions]);
+    if (shifts.length && !form.shiftId) {
+      setForm(prev => ({ ...prev, shiftId: String(shifts[0]?.id || "") }));
+    }
+    if (locs.length && !form.locationId) {
+      setForm(prev => ({ ...prev, locationId: String(locs[0]?.id || "") }));
+    }
+  }, [depts, shifts, locs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -67,7 +53,6 @@ export default function EmployeeCreate({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setIsSubmitting(true);
     setApiError(null);
     try {
       // Build the exact payload the Spring Boot backend expects
@@ -96,15 +81,13 @@ export default function EmployeeCreate({
           }))
       };
       
-      const created = await createEmployee(payload);
+      const created = await createMutation.mutateAsync(payload);
       onSuccess(created.employeeCode);
     } catch (err: any) {
       setApiError(
         err.response?.data?.message || 
         "Failed to create employee. Please check all required fields."
       );
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -273,7 +256,7 @@ export default function EmployeeCreate({
               Optional: Set starting balances for this employee. If left blank, pro-rated defaults will be used.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {leaveTypes.filter(lt => lt.active).map(type => (
+              {(leaveTypes as LeaveTypeDTO[]).filter((lt: LeaveTypeDTO) => lt.active).map((type: LeaveTypeDTO) => (
                 <div key={type.id}>
                   <label className={labelCls}>{type.name} ({type.code})</label>
                   <input 
@@ -300,8 +283,8 @@ export default function EmployeeCreate({
             <button type="button" onClick={onCancel} className="px-6 py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center gap-2">
-              {isSubmitting ? "Saving..." : "Create Employee"}
+            <button type="submit" disabled={createMutation.isPending} className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center gap-2">
+              {createMutation.isPending ? "Saving..." : "Create Employee"}
             </button>
           </div>
         </form>

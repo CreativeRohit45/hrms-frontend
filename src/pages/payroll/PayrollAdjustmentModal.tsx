@@ -3,15 +3,16 @@ import {
   X, Plus, AlertTriangle, 
   IndianRupee, Info, Save, Lock
 } from "lucide-react";
-import { addAdjustment } from "../../api/payroll";
 import type { PayslipResponse, AdjustmentType } from "../../types/payroll";
 import { SelectField } from "../../components/ui/SelectField";
+import { useAddAdjustment } from "../../hooks/queries/usePayroll";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   record: PayslipResponse;
-  onSuccess: () => void;
+  month: number;
+  year: number;
 }
 
 const ADJ_TYPES: { value: AdjustmentType; label: string; positive: boolean }[] = [
@@ -21,12 +22,13 @@ const ADJ_TYPES: { value: AdjustmentType; label: string; positive: boolean }[] =
   { value: "DEDUCTION_OTHER", label: "Deduction (Other)", positive: false },
 ];
 
-export default function PayrollAdjustmentModal({ isOpen, onClose, record, onSuccess }: Props) {
+export default function PayrollAdjustmentModal({ isOpen, onClose, record, month, year }: Props) {
   const [type, setType] = useState<AdjustmentType>("BONUS");
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState("");
   const [confirmLarge, setConfirmLarge] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  const addMutation = useAddAdjustment(month, year);
 
   // Logical Guard: Is the amount unusually large? (> Base Salary)
   const isUnusuallyLarge = useMemo(() => {
@@ -45,17 +47,19 @@ export default function PayrollAdjustmentModal({ isOpen, onClose, record, onSucc
     if (!amount || parseFloat(amount) <= 0) return;
     if (isUnusuallyLarge && !confirmLarge) return;
 
-    setLoading(true);
     try {
-      await addAdjustment(record.recordId, type, parseFloat(amount), description);
+      await addMutation.mutateAsync({
+        recordId: record.recordId,
+        type,
+        amount: parseFloat(amount),
+        description,
+      });
       setAmount("");
       setDescription("");
       setConfirmLarge(false);
-      onSuccess(); // Triggers parent refresh
+      // Cache invalidation is handled by the mutation's onSuccess
     } catch (error) {
       console.error("Failed to add adjustment", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -168,10 +172,10 @@ export default function PayrollAdjustmentModal({ isOpen, onClose, record, onSucc
 
               <button 
                 onClick={handleAdd}
-                disabled={loading || !amount || (isUnusuallyLarge && !confirmLarge)}
+                disabled={addMutation.isPending || !amount || (isUnusuallyLarge && !confirmLarge)}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-xl shadow-indigo-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                {loading ? "Injecting Ledger..." : (
+                {addMutation.isPending ? "Injecting Ledger..." : (
                   <>
                     <Save size={18} />
                     Apply Adjustment

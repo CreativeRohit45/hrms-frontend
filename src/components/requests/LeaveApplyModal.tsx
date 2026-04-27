@@ -26,6 +26,14 @@ export function LeaveApplyModal({
   const { pushToast } = useAppToast();
   const applyMutation = useApplyLeave();
 
+  const updateForm = (patch: Partial<typeof form>) => {
+    setForm((current) => {
+      const next = { ...current, ...patch };
+      if (next.halfDay && next.startDate) next.endDate = next.startDate;
+      return next;
+    });
+  };
+
   // ── Live Balance Preview Logic ──────────────────────────────────
   const { data: preview, isFetching: previewLoading } = useLeavePreview({
     leaveTypeId: form.leaveTypeId,
@@ -63,7 +71,7 @@ export function LeaveApplyModal({
           <SelectField
             label="Leave Type"
             value={String(form.leaveTypeId)}
-            onChange={(v) => setForm({ ...form, leaveTypeId: Number(v) })}
+            onChange={(v) => updateForm({ leaveTypeId: Number(v) })}
             options={types.map((t: any) => ({ label: t.name, value: String(t.id) }))}
           />
         </div>
@@ -74,14 +82,23 @@ export function LeaveApplyModal({
             label="Start Date"
             required
             value={form.startDate}
-            onChange={(v) => setForm({ ...form, startDate: v })}
+            onChange={(v) => updateForm({ startDate: v })}
           />
-          <DatePickerField
-            label="End Date"
-            required
-            value={form.endDate}
-            onChange={(v) => setForm({ ...form, endDate: v })}
-          />
+          {form.halfDay ? (
+            <div>
+              <FormLabel>End Date</FormLabel>
+              <div className="flex min-h-[48px] items-center rounded-2xl border border-gray-200 bg-gray-100 px-4 text-sm font-bold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                {form.startDate || "Select start date"}
+              </div>
+            </div>
+          ) : (
+            <DatePickerField
+              label="End Date"
+              required
+              value={form.endDate}
+              onChange={(v) => updateForm({ endDate: v })}
+            />
+          )}
         </div>
 
         {/* Half day toggle row */}
@@ -93,7 +110,7 @@ export function LeaveApplyModal({
             </div>
             <button
               type="button"
-              onClick={() => setForm({ ...form, halfDay: !form.halfDay })}
+              onClick={() => updateForm({ halfDay: !form.halfDay })}
               aria-checked={form.halfDay}
               role="switch"
               className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 ${form.halfDay ? "bg-indigo-600" : "bg-gray-200 dark:bg-gray-600"
@@ -114,7 +131,7 @@ export function LeaveApplyModal({
               </p>
               <PillToggle<"FIRST" | "SECOND">
                 value={form.halfType}
-                onChange={(v) => setForm({ ...form, halfType: v })}
+                onChange={(v) => updateForm({ halfType: v })}
                 activeColor="indigo"
                 options={[
                   {
@@ -184,13 +201,13 @@ export function LeaveApplyModal({
             required
             rows={3}
             value={form.reason}
-            onChange={(e) => setForm({ ...form, reason: e.target.value })}
+            onChange={(e) => updateForm({ reason: e.target.value })}
             placeholder="Brief details about your leave..."
           />
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-3 pt-1">
+        <div className="sticky bottom-0 -mx-4 flex flex-col gap-3 border-t border-gray-100 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-1 sm:backdrop-blur-0">
           <SubmitButton
             isPending={applyMutation.isPending || previewLoading}
             disabled={!canSubmit}

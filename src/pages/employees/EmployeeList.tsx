@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { SelectField } from "../../components/ui/SelectField";
+import { ActionSheet } from "../../components/ui/ActionSheet";
 import { useAllEmployees, useDeleteEmployee, useMyProfile } from "../../hooks/queries/useEmployees";
 import { useDepartments } from "../../hooks/queries/useSettings";
 
@@ -69,6 +70,7 @@ function ActionMenu({
   hasEdit: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,8 +83,31 @@ function ActionMenu({
 
   return (
     <div ref={ref} className="relative">
+      <ActionSheet
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Employee Actions"
+        items={[
+          ...(hasEdit ? [{
+            label: "Edit Employee",
+            description: "Update profile, payroll, role, and leave details",
+            icon: <PencilLine className="h-5 w-5" />,
+            onClick: onEdit,
+          }] : []),
+          ...(hasEdit ? [{
+            label: "Delete Employee",
+            description: "Remove this employee record permanently",
+            icon: <Trash2 className="h-5 w-5" />,
+            tone: "danger" as const,
+            onClick: onDelete,
+          }] : []),
+        ]}
+      />
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (window.matchMedia("(max-width: 767px)").matches) setSheetOpen(true);
+          else setOpen((v) => !v);
+        }}
         className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-400 transition-all hover:border-gray-200 hover:bg-gray-50 hover:text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-200"
         title="More actions"
       >

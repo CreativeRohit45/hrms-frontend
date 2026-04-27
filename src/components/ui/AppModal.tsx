@@ -7,13 +7,15 @@ interface AppModalProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
 }
 
 const SIZE_MAP = {
   sm: "max-w-md",
   md: "max-w-2xl",
   lg: "max-w-4xl",
+  xl: "max-w-5xl",
+  "2xl": "max-w-7xl",
 };
 
 export function AppModal({
@@ -36,7 +38,7 @@ export function AppModal({
         aria-label="Close dialog"
       />
       <div className={`relative w-full ${SIZE_MAP[size]} flex flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/5 transition-all dark:bg-gray-900 
-        max-md:rounded-t-[2rem] max-md:max-h-[90vh] md:max-h-[85vh] md:rounded-3xl border border-gray-200 dark:border-gray-800 
+        max-md:rounded-t-[2rem] max-md:max-h-[90vh] md:max-h-[95vh] md:rounded-3xl border border-gray-200 dark:border-gray-800 
         animate-in max-md:slide-in-from-bottom-1/2 md:zoom-in-95 duration-300`}>
         {/* Mobile drag handle */}
         <div className="md:hidden flex justify-center w-full pt-3 pb-1" aria-hidden="true">
@@ -57,8 +59,8 @@ export function AppModal({
             </svg>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">{children}</div>
-        {footer && <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 px-4 sm:px-6 py-4 dark:border-gray-800 dark:bg-gray-900/60">{footer}</div>}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6">{children}</div>
+        {footer && <div className="shrink-0 border-t border-gray-100 bg-gray-50/80 px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] dark:border-gray-800 dark:bg-gray-900/60 sm:px-6">{footer}</div>}
       </div>
     </div>
   );
