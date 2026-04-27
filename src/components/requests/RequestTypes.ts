@@ -4,6 +4,8 @@ export interface Request {
   details: string;
   status: string;
   timestamp: string;
+  pendingApproverName?: string;
+  actionByName?: string;
   metadata?: any;
 }
 

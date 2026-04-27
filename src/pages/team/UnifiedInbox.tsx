@@ -1,7 +1,8 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import {
   CheckCircle2, XCircle, Clock3, CalendarDays,
-  MapPin, Inbox, ArrowRight, Ticket, PalmtreeIcon
+  MapPin, Inbox, ArrowRight, Ticket, PalmtreeIcon,
+  AlertTriangle
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppToast } from "../../components/ui/ToastProvider";
@@ -14,6 +15,7 @@ import {
 } from "../../hooks/queries/useAttendance";
 import { useApproveLeave, useRejectLeave, useRevokeLeave } from "../../hooks/queries/useLeaves";
 import { useApproveGatepass, useRejectGatepass } from "../../hooks/queries/useGatepasses";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 
 interface UnifiedRequest {
   id: string; // e.g. "LEAVE-1"
@@ -219,6 +221,10 @@ const TABS = [
 export default function UnifiedInbox() {
   const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [revokeModal, setRevokeModal] = useState<{ isOpen: boolean; request: UnifiedRequest | null }>({
+    isOpen: false,
+    request: null
+  });
   const { pushToast } = useAppToast();
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -268,13 +274,17 @@ export default function UnifiedInbox() {
   const revokeLeave = useRevokeLeave();
 
   const handleAction = async (request: UnifiedRequest, action: "approve" | "reject" | "revoke") => {
+    if (action === "revoke") {
+      setRevokeModal({ isOpen: true, request });
+      return;
+    }
+
     const rawId = parseInt(request.id.split("-")[1]);
     const key = request.id;
     setActioningId(key);
     try {
       if (request.type === "LEAVE") {
         if (action === "approve") await approveLeave.mutateAsync(rawId);
-        else if (action === "revoke") await revokeLeave.mutateAsync({ leaveId: rawId, reason: "Revoked by Manager" });
         else await rejectLeave.mutateAsync({ leaveId: rawId, data: { rejectionReason: "Manager action" } });
       } else if (request.type === "GATEPASS") {
         if (action === "approve") await approveGatepass.mutateAsync(rawId);
@@ -291,6 +301,23 @@ export default function UnifiedInbox() {
       pushToast({ title: "Error", message: `Failed to ${action} request`, tone: "error" });
     } finally {
       setActioningId(null);
+    }
+  };
+
+  const confirmRevoke = async () => {
+    const request = revokeModal.request;
+    if (!request) return;
+
+    const rawId = parseInt(request.id.split("-")[1]);
+    setActioningId(request.id);
+    try {
+      await revokeLeave.mutateAsync({ leaveId: rawId, reason: "Revoked by Manager" });
+      pushToast({ title: "Success", message: "Leave approval revoked", tone: "success" });
+    } catch {
+      pushToast({ title: "Error", message: "Failed to revoke approval", tone: "error" });
+    } finally {
+      setActioningId(null);
+      setRevokeModal({ isOpen: false, request: null });
     }
   };
 
@@ -349,6 +376,17 @@ export default function UnifiedInbox() {
           {isFetchingNextPage && <div className="py-4 text-center"><div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={revokeModal.isOpen}
+        onClose={() => setRevokeModal({ isOpen: false, request: null })}
+        onConfirm={confirmRevoke}
+        title="Revoke Leave Approval"
+        message={`Are you absolutely sure you want to revoke the approved leave for ${revokeModal.request?.employeeName}? This will refund their balance and notify them immediately.`}
+        confirmText="Revoke Approval"
+        requireConfirmText="REVOKE"
+        isDestructive={true}
+      />
     </div>
   );
 }

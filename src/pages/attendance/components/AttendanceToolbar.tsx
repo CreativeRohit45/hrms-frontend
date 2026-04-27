@@ -2,6 +2,7 @@
 //  AttendanceToolbar — Filters, view toggles, and export for
 //  calendar/list views. Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
+import { Download } from "lucide-react";
 import { exportToCSV } from "./shared";
 import type { AttendanceLogResponse } from "../../../types/attendance";
 import { SelectField } from "../../../components/ui/SelectField";
@@ -15,76 +16,81 @@ interface AttendanceToolbarProps {
   filtered: AttendanceLogResponse[];
   activeEmployeeCode: string;
   isLoading: boolean;
+  isManager: boolean;
 }
 
 export function AttendanceToolbar({
   viewMode, setViewMode,
   filterMonth, setFilterMonth,
   monthOptions, filtered,
-  activeEmployeeCode, isLoading,
+  activeEmployeeCode, isLoading, isManager,
 }: AttendanceToolbarProps) {
+  const modes = isManager
+    ? (["calendar", "list", "roster"] as const)
+    : (["calendar", "list"] as const);
+
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-5
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5
       border-b border-gray-200 dark:border-gray-800">
-      <p className="text-gray-700 dark:text-gray-300 text-sm font-semibold">
-        Attendance Records
-        {!isLoading && (
-          <span className="ml-2 text-gray-400 dark:text-gray-600 text-xs font-normal">
-            ({filtered.length} {filtered.length === 1 ? "entry" : "entries"})
-          </span>
-        )}
-      </p>
-      <div className="w-full sm:w-auto flex items-center gap-2">
-        {/* Desktop Sub-view toggle (Calendar/List) */}
-        <div className="hidden sm:flex bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
-          {(["calendar", "list"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all capitalize
-                ${viewMode === mode
-                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
-            >
-              {mode}
-            </button>
-          ))}
+      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-gray-900 dark:text-white text-lg font-black tracking-tight leading-none">
+            Attendance
+          </h2>
+          {!isLoading && (
+            <p className="text-[10px] font-bold text-indigo-500/80 uppercase tracking-widest mt-1">
+              {filtered.length} {filtered.length === 1 ? "Record" : "Records"}
+            </p>
+          )}
         </div>
 
-        {/* Month filter — compact on all screens */}
-        <div className="flex-1 sm:flex-none sm:min-w-[150px]">
-          <SelectField
-            compact
-            value={filterMonth}
-            onChange={(v) => setFilterMonth(v)}
-            options={monthOptions.map(opt => ({ label: opt.label, value: opt.value }))}
-          />
-        </div>
+        <div className="w-full sm:w-auto flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Sub-view toggle (Calendar/List/Roster) */}
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700/50">
+            {modes.map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all
+                  ${viewMode === mode
+                    ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5"
+                    : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
 
-        {/* CSV Export button — compact, icon-only on mobile */}
-        {filtered.length > 0 && (
-          <button
-            onClick={() => {
-              exportToCSV(filtered, `attendance_${activeEmployeeCode}_${filterMonth}.csv`);
-            }}
-            className="flex-shrink-0 flex items-center justify-center gap-1.5 h-10 px-3 sm:px-4
-              bg-white dark:bg-gray-800 border border-gray-200
-              dark:border-gray-700 rounded-xl text-xs font-bold
-              text-gray-600 dark:text-gray-400
-              hover:bg-emerald-50 dark:hover:bg-emerald-950/30
-              hover:text-emerald-700 dark:hover:text-emerald-400
-              hover:border-emerald-300 dark:hover:border-emerald-800
-              transition-all shadow-sm"
-            title="Export current view to CSV"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor"
-              viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            <span className="hidden sm:inline">Export</span>
-          </button>
-        )}
+          <div className="flex items-center gap-2 flex-1 sm:flex-none">
+            {/* Month filter */}
+            <div className="flex-1 sm:min-w-[160px]">
+              <SelectField
+                compact
+                value={filterMonth}
+                onChange={(v) => setFilterMonth(v)}
+                options={monthOptions.map(opt => ({ label: opt.label, value: opt.value }))}
+                className="!space-y-0"
+              />
+            </div>
+
+            {/* CSV Export button */}
+            {filtered.length > 0 && (
+              <button
+                onClick={() => {
+                  exportToCSV(filtered, `attendance_${activeEmployeeCode}_${filterMonth}.csv`);
+                }}
+                className="flex items-center justify-center h-10 px-4
+                  bg-indigo-600 text-white rounded-xl text-xs font-bold
+                  hover:bg-indigo-700 active:scale-95
+                  transition-all shadow-lg shadow-indigo-500/20 dark:shadow-none"
+                title="Export current view to CSV"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline ml-2">Export</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

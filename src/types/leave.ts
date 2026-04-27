@@ -91,6 +91,7 @@ export interface LeaveBalanceAuditResponse {
   reason: string;
   referenceLeaveId: number | null;
   performedByUserId: number | null;
+  performedByName: string | null;
   createdAt: string;
 }
 

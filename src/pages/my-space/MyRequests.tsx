@@ -68,6 +68,8 @@ export default function MyRequests() {
       details: `${l.leaveTypeName}: ${l.startDate} to ${l.endDate}`,
       status: l.status,
       timestamp: l.createdAt || new Date().toISOString(),
+      pendingApproverName: l.pendingApproverName,
+      actionByName: l.actionByName,
       metadata: l,
     })),
     ...gatepassesRaw.map((g: any) => ({
@@ -90,17 +92,15 @@ export default function MyRequests() {
     activeTab === "ALL" ? requests : activeTab === "LEAVE" ? leaves : gatepasses;
 
   const handleOpenLeave = () => {
-    pushToast({ title: "Opening Form", message: "Syncing Leave Application Drawer...", tone: "info" });
     setShowLeaveModal(true);
   };
 
   const handleOpenGatepass = () => {
-    pushToast({ title: "Opening Form", message: "Syncing Gatepass Request Drawer...", tone: "info" });
     setShowGatepassModal(true);
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl overflow-hidden space-y-6 px-4 sm:px-6 md:px-8 pb-28 pt-4">
+    <div className="mx-auto w-full max-w-3xl overflow-x-hidden space-y-6 px-4 sm:px-6 md:px-8 pb-28 pt-4">
 
       {/* ── MODAL PORTAL ──────────────────────────────────────────── */}
       <div className="relative z-[1000]">

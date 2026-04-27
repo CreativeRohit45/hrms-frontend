@@ -3,6 +3,7 @@ import { AppModal } from "../ui/AppModal";
 import { useAppToast } from "../ui/ToastProvider";
 import { useApplyGatepass } from "../../hooks/queries/useGatepasses";
 import { FormLabel, FormTextarea, DateTimeInput, SubmitButton, PillToggle } from "../forms/FormPrimitives";
+import { DatePickerField } from "../ui/DatePickerField";
 
 export function GatepassApplyModal({
   onClose,
@@ -12,8 +13,9 @@ export function GatepassApplyModal({
   onSuccess: () => void;
 }) {
   const [form, setForm] = useState({
-    requestedOutTime: "",
-    requestedInTime: "",
+    date: "",
+    outTime: "",
+    inTime: "",
     gatepassType: "OFFICIAL" as "OFFICIAL" | "PERSONAL",
     reason: "",
   });
@@ -22,8 +24,19 @@ export function GatepassApplyModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.date || !form.outTime || !form.inTime) {
+      pushToast({ title: "Validation Error", message: "Date and times are required.", tone: "error" });
+      return;
+    }
+    const payload = {
+      gatepassType: form.gatepassType,
+      reason: form.reason,
+      requestedOutTime: `${form.date}T${form.outTime}`,
+      requestedInTime: `${form.date}T${form.inTime}`,
+    };
+
     try {
-      await applyMutation.mutateAsync(form as any);
+      await applyMutation.mutateAsync(payload as any);
       pushToast({ title: "Success", message: "Gatepass request sent!", tone: "success" });
       onSuccess();
     } catch (err: any) {
@@ -49,23 +62,41 @@ export function GatepassApplyModal({
           />
         </div>
 
-        {/* Time pickers — stacked on mobile, side-by-side sm+ */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Date Picker */}
+        <div>
+          <DatePickerField
+            label="Date"
+            required
+            value={form.date}
+            onChange={(v) => setForm({ ...form, date: v })}
+          />
+        </div>
+
+        {/* Time pickers */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <FormLabel>Exit Time</FormLabel>
-            <DateTimeInput
-              required
-              value={form.requestedOutTime}
-              onChange={(e) => setForm({ ...form, requestedOutTime: e.target.value })}
-            />
+            <div className="relative flex items-center">
+              <input
+                type="time"
+                required
+                value={form.outTime}
+                onChange={(e) => setForm({ ...form, outTime: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base sm:text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
+              />
+            </div>
           </div>
           <div>
             <FormLabel>Return Time</FormLabel>
-            <DateTimeInput
-              required
-              value={form.requestedInTime}
-              onChange={(e) => setForm({ ...form, requestedInTime: e.target.value })}
-            />
+            <div className="relative flex items-center">
+              <input
+                type="time"
+                required
+                value={form.inTime}
+                onChange={(e) => setForm({ ...form, inTime: e.target.value })}
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base sm:text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
+              />
+            </div>
           </div>
         </div>
 

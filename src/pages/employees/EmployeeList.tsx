@@ -477,8 +477,11 @@ export default function EmployeeList({
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="Delete Employee"
-        message="Are you sure you want to delete this employee record? This action is permanent and will remove all their data from the directory."
+        title="Delete Employee Record"
+        message="Are you absolutely sure you want to delete this employee? This will permanently remove their profile, attendance logs, and payroll history. This action CANNOT be undone."
+        confirmText="DELETE"
+        requireConfirmText="DELETE"
+        isDestructive={true}
       />
     </div>
   );

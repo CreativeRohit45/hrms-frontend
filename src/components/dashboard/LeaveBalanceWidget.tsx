@@ -1,10 +1,14 @@
-import { Palmtree, Info } from "lucide-react";
-import { useMyBalances } from "../../hooks/queries/useLeaves";
+import { useState } from "react";
+import { Palmtree, Info, History } from "lucide-react";
+import { useMyBalances, useMyAuditTrail } from "../../hooks/queries/useLeaves";
+import { BalanceHistoryModal } from "./BalanceHistoryModal";
 
 export function LeaveBalanceWidget() {
-  const { data: balances = [], isLoading } = useMyBalances();
+  const { data: balances = [], isLoading: isBalancesLoading } = useMyBalances();
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const { data: audits = [], isLoading: isAuditsLoading } = useMyAuditTrail();
 
-  if (isLoading) {
+  if (isBalancesLoading) {
     return (
       <div className="grid h-64 grid-cols-2 gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800/60 dark:bg-gray-900">
         {[1, 2, 3, 4].map((i) => (
@@ -37,10 +41,19 @@ export function LeaveBalanceWidget() {
             Leave Balances
           </h2>
         </div>
-        <div className="group relative cursor-help">
-          <Info className="h-3.5 w-3.5 text-gray-300 transition-colors group-hover:text-indigo-400" />
-          <div className="absolute right-0 top-6 hidden w-48 rounded-xl border border-gray-100 bg-white p-3 text-[10px] font-medium text-gray-500 shadow-xl dark:border-gray-800 dark:bg-gray-900 group-hover:block z-50">
-            Balances are updated automatically based on accrual and approved requests.
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsHistoryOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest text-gray-400 transition-colors hover:bg-gray-50 hover:text-indigo-600 dark:hover:bg-gray-800"
+          >
+            <History className="h-3 w-3" />
+            History
+          </button>
+          <div className="group relative cursor-help">
+            <Info className="h-3.5 w-3.5 text-gray-300 transition-colors group-hover:text-indigo-400" />
+            <div className="absolute right-0 top-6 hidden w-48 rounded-xl border border-gray-100 bg-white p-3 text-[10px] font-medium text-gray-500 shadow-xl dark:border-gray-800 dark:bg-gray-900 group-hover:block z-50">
+              Balances are updated automatically based on accrual and approved requests.
+            </div>
           </div>
         </div>
       </div>
@@ -83,6 +96,13 @@ export function LeaveBalanceWidget() {
           );
         })}
       </div>
+
+      <BalanceHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        audits={audits}
+        isLoading={isAuditsLoading}
+      />
     </div>
   );
 }

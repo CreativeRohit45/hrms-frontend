@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { punchIn, punchOut } from "../api/attendance";
 import { getServerNow } from "../utils/serverTime";
 import {
@@ -24,6 +25,7 @@ import { LeaveBalanceWidget } from "../components/dashboard/LeaveBalanceWidget";
 export default function Dashboard() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
+  const navigate = useNavigate();
 
   const { data: stats, isLoading: loading } = useDashboardStats();
   const { data: absentees = [] } = useDepartmentAbsentees();
@@ -131,7 +133,7 @@ export default function Dashboard() {
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <button 
-            onClick={() => window.location.href = '/app/team/inbox'}
+            onClick={() => navigate('/app/team/inbox')}
             className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-indigo-900/50"
           >
             <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-indigo-50 transition-transform group-hover:scale-150 dark:bg-indigo-900/10" />
@@ -147,7 +149,7 @@ export default function Dashboard() {
           </button>
 
           <button 
-            onClick={() => window.location.href = '/app/employees'}
+            onClick={() => navigate('/app/employees')}
             className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-emerald-200 hover:shadow-2xl hover:shadow-emerald-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-emerald-900/50"
           >
             <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-emerald-50 transition-transform group-hover:scale-150 dark:bg-emerald-900/10" />
@@ -163,7 +165,7 @@ export default function Dashboard() {
           </button>
 
           <button 
-            onClick={() => window.location.href = '/app/settings'}
+            onClick={() => navigate('/app/settings')}
             className="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-8 text-left transition-all hover:border-amber-200 hover:shadow-2xl hover:shadow-amber-500/10 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-amber-900/50"
           >
             <div className="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-amber-50 transition-transform group-hover:scale-150 dark:bg-amber-900/10" />
@@ -233,7 +235,7 @@ export default function Dashboard() {
                 {isActive ? "Elapsed Time" : "Current Time"}
               </p>
               <div className={`font-mono text-5xl font-black tracking-tighter ${isActive ? 'text-indigo-600' : 'text-gray-900 dark:text-white'}`}>
-                {isActive ? formatDuration(stats.currentSession?.punchInTime ?? "") : clockLabel}
+                {isActive ? formatDuration(stats.currentSession?.punchInTime ?? "", currentTime) : clockLabel}
               </div>
             </div>
 
@@ -357,10 +359,10 @@ function MetricCard({ label, value, icon, tone = "info" }: MetricCardProps) {
   );
 }
 
-function formatDuration(startTime: string) {
+function formatDuration(startTime: string, nowOverride?: Date) {
   if (!startTime) return "00:00:00";
   const start = new Date(startTime).getTime();
-  const now = getServerNow().getTime();
+  const now = (nowOverride || getServerNow()).getTime();
   const diff = Math.max(0, now - start);
   const h = Math.floor(diff / (1000 * 60 * 60));
   const m = Math.floor((diff / (1000 * 60)) % 60);

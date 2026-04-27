@@ -3,6 +3,7 @@
 //  Pure presentation, no business logic.
 // ═══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState } from "react";
+import { Calendar, Download } from "lucide-react";
 import { getServerNow } from "../../../utils/serverTime";
 import {
   formatMinutes,
@@ -57,12 +58,13 @@ export function AttendanceRoster({
   return (
     <div className="p-0">
       {/* Roster toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5
         border-b border-gray-200 dark:border-gray-800
         bg-gray-50/30 dark:bg-gray-800/10">
-        <div className="flex items-center gap-4 flex-wrap">
+        
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
           {/* Date picker button */}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <button
               onClick={() => setIsRosterPickerOpen(!isRosterPickerOpen)}
               className="flex items-center gap-2.5 pl-10 pr-4 py-2.5
@@ -75,12 +77,7 @@ export function AttendanceRoster({
             >
               <div className="absolute inset-y-0 left-0 pl-3.5
                 flex items-center pointer-events-none">
-                <svg className="h-4 w-4 text-gray-400" fill="none"
-                  stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+                <Calendar className="h-4 w-4 text-gray-400" />
               </div>
               {formatLongDate(rosterDate)}
             </button>
@@ -147,12 +144,12 @@ export function AttendanceRoster({
           </div>
 
           {/* Search + prev/next day */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative group">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="relative group w-full sm:w-auto">
               <input type="text" placeholder="Search roster..."
                 value={rosterSearchTerm}
                 onChange={(e) => setRosterSearchTerm(e.target.value)}
-                className="h-10 w-full sm:w-56 pl-10 pr-4 bg-white dark:bg-gray-800
+                className="h-11 sm:h-10 w-full sm:w-56 pl-10 pr-4 bg-white dark:bg-gray-800
                   border border-gray-200 dark:border-gray-700 rounded-xl
                   text-sm font-semibold focus:outline-none focus:ring-4
                   focus:ring-indigo-500/10 focus:border-indigo-500
@@ -165,19 +162,19 @@ export function AttendanceRoster({
               </svg>
             </div>
 
-            <div className="flex w-full sm:w-auto bg-gray-100/80 dark:bg-gray-800 p-1 rounded-xl
-              shadow-inner border border-gray-200/50 dark:border-gray-700/50 group">
+            <div className="flex bg-gray-100/80 dark:bg-gray-800 p-1 rounded-xl
+              shadow-inner border border-gray-200/50 dark:border-gray-700/50 group w-full sm:w-auto">
               <button onClick={() => {
                 const d = new Date(rosterDate); d.setDate(d.getDate() - 1);
                 setRosterDate(d.toISOString().split("T")[0]);
               }} title="Previous Day"
-                className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg
+                className="p-2.5 sm:p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg
                   text-gray-500 dark:text-gray-400 transition-all
                   hover:text-indigo-600 shadow-sm hover:shadow active:scale-90 flex-1 sm:flex-none">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
               </button>
               <button onClick={() => setRosterDate(todayStr)}
-                className="px-6 py-2 text-[10px] font-black uppercase tracking-widest
+                className="px-6 py-2.5 sm:py-2 text-[10px] font-black uppercase tracking-widest
                   text-gray-500 dark:text-gray-400 hover:text-indigo-600
                   dark:hover:text-indigo-400 transition-colors flex items-center justify-center gap-2 flex-[2] sm:flex-none">
                 <span className={`w-2 h-2 rounded-full ${rosterDate === todayStr ? "bg-indigo-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
@@ -188,7 +185,7 @@ export function AttendanceRoster({
                 const dStr = d.toISOString().split("T")[0];
                 if (dStr <= todayStr) setRosterDate(dStr);
               }} disabled={rosterDate >= todayStr} title="Next Day"
-                className="p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg
+                className="p-2.5 sm:p-2 hover:bg-white dark:hover:bg-gray-700 rounded-lg
                   text-gray-500 dark:text-gray-400 transition-all hover:text-indigo-600
                   shadow-sm hover:shadow active:scale-90
                   disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-500 flex-1 sm:flex-none">
@@ -199,44 +196,39 @@ export function AttendanceRoster({
         </div>
 
         {/* Roster micro-stats + CSV export */}
-        <div className="hidden md:flex items-center gap-4">
-          {filteredDailyLogs.length > 0 && (
-            <button
-              onClick={() => exportToCSV(filteredDailyLogs, `roster_${rosterDate}.csv`)}
-              className="flex items-center gap-1.5 px-3 py-1.5
-                bg-white dark:bg-gray-900 border border-gray-200
-                dark:border-gray-800 rounded-lg text-xs font-semibold
-                text-gray-500 dark:text-gray-400
-                hover:bg-emerald-50 dark:hover:bg-emerald-950/30
-                hover:text-emerald-700 dark:hover:text-emerald-400
-                hover:border-emerald-300 dark:hover:border-emerald-800
-                transition-all shadow-sm"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Export CSV
-            </button>
-          )}
-          <div className="h-8 w-px bg-gray-200 dark:bg-gray-800" />
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Active Punch</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-sm font-mono font-bold text-gray-700 dark:text-gray-300">
-                {dailyLogs.filter((l) => !l.punchOutTime).length}
+        <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-start sm:items-end">
+              <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Punch In</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
+                  {dailyLogs.filter((l) => !l.punchOutTime).length}
+                </span>
+              </div>
+            </div>
+            <div className="h-6 w-px bg-gray-200 dark:bg-gray-800" />
+            <div className="flex flex-col items-start sm:items-end">
+              <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Total</span>
+              <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                {dailyLogs.length}
               </span>
             </div>
           </div>
-          <div className="h-8 w-px bg-gray-200 dark:bg-gray-800" />
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-0.5">Total Logs</span>
-            <span className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400">
-              {dailyLogs.length}
-            </span>
-          </div>
+          
+          {filteredDailyLogs.length > 0 && (
+            <button
+              onClick={() => exportToCSV(filteredDailyLogs, `roster_${rosterDate}.csv`)}
+              className="flex items-center gap-2 px-4 h-11 sm:h-10
+                bg-indigo-600 text-white rounded-xl text-xs font-bold
+                hover:bg-indigo-700 active:scale-95
+                transition-all shadow-lg shadow-indigo-500/20 dark:shadow-none"
+            >
+              <Download className="w-4 h-4" />
+              <span className="sm:hidden">Export CSV</span>
+              <span className="hidden sm:inline">Export</span>
+            </button>
+          )}
         </div>
       </div>
 

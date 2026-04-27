@@ -233,8 +233,7 @@ export default function DailyRoster() {
             </button>
             
             {/* Clickable DatePicker with Icon */}
-            <div className="flex items-center gap-2 px-1 [&_button]:!bg-transparent [&_button]:!border-none [&_button]:!shadow-none [&_button]:!text-white [&_button]:!font-black [&_button]:!text-sm [&_button]:!h-auto [&_button]:!px-2 [&_button]:!py-1.5 [&_button]:!ring-0 [&_label]:!hidden">
-              <CalendarDays className="h-4 w-4 text-indigo-400 shrink-0" />
+            <div className="flex items-center gap-2 px-1 [&>div>button]:!bg-transparent [&>div>button]:!border-none [&>div>button]:!shadow-none [&>div>button]:!text-white [&>div>button]:!font-black [&>div>button]:!text-sm [&>div>button]:!h-auto [&>div>button]:!px-2 [&>div>button]:!py-1.5 [&>div>button]:!ring-0 [&_label]:!hidden">
               <DatePickerField
                 value={selectedDateStr}
                 onChange={(v) => { setSelectedDateStr(v); setCurrentPage(0); }}

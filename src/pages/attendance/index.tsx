@@ -795,19 +795,17 @@ export default function AttendancePage() {
       <div className={`bg-white dark:bg-gray-900 border border-gray-200
         dark:border-gray-800 rounded-xl shadow-card relative animate-in fade-in duration-500`}>
 
-        {/* ── Toolbar (list/calendar) ── */}
-        {viewMode !== "roster" && (
-          <AttendanceToolbar
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            filterMonth={filterMonth}
-            setFilterMonth={setFilterMonth}
-            monthOptions={monthOptions}
-            filtered={filtered}
-            activeEmployeeCode={activeEmployeeCode}
-            isLoading={isLoading}
-          />
-        )}
+        <AttendanceToolbar
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          filterMonth={filterMonth}
+          setFilterMonth={setFilterMonth}
+          monthOptions={monthOptions}
+          filtered={filtered}
+          activeEmployeeCode={activeEmployeeCode}
+          isLoading={isLoading}
+          isManager={isManager}
+        />
 
         {/* ── ROSTER VIEW ── */}
         {viewMode === "roster" && (
