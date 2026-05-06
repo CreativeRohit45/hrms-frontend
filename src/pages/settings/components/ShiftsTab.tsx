@@ -54,7 +54,8 @@ export default function ShiftsTab() {
       ) : shifts.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">No shifts configured yet.</div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800">
@@ -109,6 +110,60 @@ export default function ShiftsTab() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile card layout */}
+        <div className="space-y-3 md:hidden">
+          {shifts.map((s) => (
+            <div key={s.id} className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-800/20">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{s.shiftName}</p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      s.active
+                        ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+                    }`}>
+                      {s.active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-mono text-gray-500 dark:text-gray-400">
+                    {formatTime(s.startTime)} → {formatTime(s.endTime)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setEditingShift(s); setShowForm(true); }}
+                    className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-indigo-600 transition-colors"
+                  >
+                    <PencilLine size={16} />
+                  </button>
+                  <button
+                    onClick={() => s.id && setConfirmDelete(s.id)}
+                    className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white p-2.5 text-center dark:bg-gray-900">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Hours</p>
+                  <p className="mt-0.5 text-sm font-bold text-gray-900 dark:text-white">{s.standardHours}h</p>
+                </div>
+                <div className="rounded-xl bg-white p-2.5 text-center dark:bg-gray-900">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Break</p>
+                  <p className="mt-0.5 text-sm font-bold text-gray-900 dark:text-white">{s.unpaidBreakMinutes}m</p>
+                </div>
+                <div className="rounded-xl bg-white p-2.5 text-center dark:bg-gray-900">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Grace</p>
+                  <p className="mt-0.5 text-sm font-bold text-gray-900 dark:text-white">{s.gracePeriodMinutes}m</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {showForm && (

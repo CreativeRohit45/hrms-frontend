@@ -85,7 +85,7 @@ export default function DepartmentsTab() {
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
                 {dept.description || "No description provided."}
               </p>
-              <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity pt-4 border-t border-gray-50 dark:border-gray-800/50">
+              <div className="flex justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pt-4 border-t border-gray-50 dark:border-gray-800/50">
                 <button
                   onClick={() => { setEditing(dept); setShowForm(true); }}
                   className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-indigo-600 transition-colors"

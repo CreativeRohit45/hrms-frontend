@@ -3,7 +3,6 @@ import { BriefcaseBusiness, Mail, Phone, UserCircle2 } from "lucide-react";
 import { useMyProfile, useUpdateMyProfile, useChangePassword } from "../hooks/queries/useEmployees";
 import { useMyBalances } from "../hooks/queries/useLeaves";
 import { ErrorState } from "../components/ui/ErrorState";
-import { PageHeader } from "../components/ui/PageHeader";
 import { useAppToast } from "../components/ui/ToastProvider";
 
 export default function Profile() {
@@ -58,15 +57,25 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <PageHeader
-        title="My Profile"
-        subtitle="Keep your personal details accurate and review your employment snapshot in one place."
-        actions={!isEditing ? (
-          <button onClick={() => setIsEditing(true)} className="rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700">
-            Edit personal info
-          </button>
-        ) : undefined}
-      />
+      {/* ── HERO ──────────────────────────────────────────────────── */}
+      {/* ── HERO BANNER ── */}
+      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 p-5 shadow-xl shadow-indigo-200/40 dark:shadow-indigo-900/40 sm:p-6 md:p-8">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
+              <UserCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">
+                Personal Information
+              </p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white md:text-3xl truncate">
+                My Profile
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
 
 
 
@@ -115,7 +124,18 @@ export default function Profile() {
 
         <form onSubmit={handleUpdate} className="space-y-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <section>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Personal Information</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Personal Information</p>
+              {!isEditing && (
+                <button 
+                  type="button"
+                  onClick={() => setIsEditing(true)} 
+                  className="rounded-xl bg-indigo-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white dark:bg-indigo-900/30 dark:text-indigo-400"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
             <div className="mt-4 grid gap-5 md:grid-cols-2">
               <div>
                 <label className={labelClass}>Phone Number</label>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Palmtree, Info, History } from "lucide-react";
 import { useMyBalances, useMyAuditTrail } from "../../hooks/queries/useLeaves";
 import { BalanceHistoryModal } from "./BalanceHistoryModal";
@@ -6,7 +6,14 @@ import { BalanceHistoryModal } from "./BalanceHistoryModal";
 export function LeaveBalanceWidget() {
   const { data: balances = [], isLoading: isBalancesLoading } = useMyBalances();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const { data: audits = [], isLoading: isAuditsLoading } = useMyAuditTrail();
+  const { 
+    data: auditsData, 
+    isLoading: isAuditsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useMyAuditTrail();
+  const audits = useMemo(() => auditsData?.pages.flatMap((p: any) => p.content) || [], [auditsData]);
 
   if (isBalancesLoading) {
     return (
@@ -102,6 +109,9 @@ export function LeaveBalanceWidget() {
         onClose={() => setIsHistoryOpen(false)}
         audits={audits}
         isLoading={isAuditsLoading}
+        fetchNextPage={fetchNextPage}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
       />
     </div>
   );

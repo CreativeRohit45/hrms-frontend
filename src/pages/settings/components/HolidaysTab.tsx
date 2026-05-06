@@ -40,13 +40,13 @@ export default function HolidaysTab() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h2 className="text-base font-bold text-gray-900 dark:text-white">Public Holidays</h2>
           <p className="text-xs text-gray-500 mt-0.5">Manage company holidays for the current year</p>
         </div>
         <div className="flex items-center gap-2">
-          <label className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-lg shadow-sm transition-all active:scale-95">
+          <label className="cursor-pointer flex-1 sm:flex-none text-center px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-lg shadow-sm transition-all active:scale-95">
             Upload Excel
             <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -54,15 +54,11 @@ export default function HolidaysTab() {
                 try {
                   const { uploadHolidays } = await import('../../../api/holidays');
                   await uploadHolidays(file);
-                  // Optionally invalidate queries here through a context or client export
-                  // but a simple reload/refetch can be tricky if queryClient isn't in scope.
-                  // Wait, useHolidays will refetch automatically if focused, but let's pushToast.
                   pushToast({
                     tone: "success",
                     title: "Holiday file uploaded",
                     message: "The holiday calendar has been refreshed successfully.",
                   });
-                  // Ideally, invalidate the cache:
                   const { queryClient } = await import('../../../lib/queryClient');
                   queryClient.invalidateQueries({ queryKey: ['settings', 'holidays'] });
                 } catch {
@@ -77,7 +73,7 @@ export default function HolidaysTab() {
           </label>
           <button
             onClick={() => { setEditing(null); setShowForm(true); }}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold
+            className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold
               rounded-lg shadow-sm transition-all active:scale-95"
           >
             + Add Holiday

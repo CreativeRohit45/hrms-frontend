@@ -18,7 +18,7 @@ import {
   ShieldCheck,
   Copy
 } from "lucide-react";
-import type { LeaveBalanceResponse, LeaveBalanceAuditResponse } from "../../types/leave";
+import type { LeaveBalanceResponse } from "../../types/leave";
 import { useGrantLeave, useOverrideBalance, useRunAccrual } from "../../hooks/queries/useLeaves";
 import { useEmployeeBalances, useEmployeeAuditTrail, useEmployeeLeaveRequests } from "../../hooks/queries/useLeaves";
 import { useEmployeeById, useUpdateEmployee } from "../../hooks/queries/useEmployees";
@@ -51,7 +51,8 @@ export default function EmployeeEdit({
   // Leave queries — only fire when the leaves tab is active
   const isLeavesTab = activeTab === "leaves";
   const { data: balances = [], isLoading: loadingBalances } = useEmployeeBalances(employeeId, isLeavesTab);
-  const { data: audits = [], isLoading: loadingAudits } = useEmployeeAuditTrail(employeeId, isLeavesTab);
+  const { data: auditsData, isLoading: loadingAudits, fetchNextPage: fetchMoreAudits, hasNextPage: hasMoreAudits, isFetchingNextPage: fetchingMoreAudits } = useEmployeeAuditTrail(employeeId, isLeavesTab);
+  const audits = React.useMemo(() => auditsData?.pages.flatMap(p => p.content) || [], [auditsData]);
   const { data: leaveRequests = [], isLoading: loadingRequests } = useEmployeeLeaveRequests(employeeId, isLeavesTab);
   const loadingLeaves = loadingBalances || loadingAudits || loadingRequests;
 
@@ -467,6 +468,15 @@ export default function EmployeeEdit({
               ))}
             </div>
             <div className="p-4 bg-gray-50/30 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800 text-center">
+              {hasMoreAudits ? (
+                <button
+                  onClick={() => fetchMoreAudits()}
+                  disabled={fetchingMoreAudits}
+                  className="mb-4 text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  {fetchingMoreAudits ? "Loading..." : "Load More Audits"}
+                </button>
+              ) : null}
               <p className="text-[9px] font-bold text-gray-400 flex items-center justify-center gap-2 uppercase tracking-widest">
                 <ShieldCheck size={12} className="text-emerald-500" /> Financial Proof of Stake Verified
               </p>

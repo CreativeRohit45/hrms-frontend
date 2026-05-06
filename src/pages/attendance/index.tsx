@@ -5,7 +5,7 @@
 //  useAttendanceDashboardStats + mutation hooks.
 // ═══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { ClipboardList, RefreshCw } from "lucide-react";
 import { getServerNow } from "../../utils/serverTime";
 import {
   formatMinutes,
@@ -128,19 +128,32 @@ function CorrectionModal({ log, employeeCode, onClose, onSuccess }: CorrectionMo
 
         <div className="px-6 py-5 space-y-6">
           {/* Reference Info */}
-          <div className="flex items-center justify-between p-3 bg-indigo-50/30 dark:bg-indigo-950/10
-            border border-indigo-100/50 dark:border-indigo-900/20 rounded-xl">
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-tighter">Current Record</p>
-              <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-300">
-                {formatTime(log.punchInTime)} — {log.punchOutTime ? formatTime(log.punchOutTime) : "--:--"}
-              </p>
+          {/* Reference Info - Redesigned to avoid congestion */}
+          <div className="space-y-3 bg-gray-50/50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Current Record</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                  <p className="text-[11px] font-mono font-bold text-gray-700 dark:text-gray-200">
+                    {formatTime(log.punchInTime)} <span className="text-gray-300 mx-1">—</span> {log.punchOutTime ? formatTime(log.punchOutTime) : "--:--"}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Shift Time</p>
-              <p className="text-xs font-mono font-bold text-gray-500">
-                {formatTime(log.shiftStartTime)} — {formatTime(log.shiftEndTime)}
-              </p>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-800 to-transparent" />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Shift Schedule</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-700" />
+                  <p className="text-[11px] font-mono font-bold text-gray-500 dark:text-gray-400">
+                    {formatTime(log.shiftStartTime)} <span className="text-gray-300 mx-1">—</span> {formatTime(log.shiftEndTime)}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -411,8 +424,8 @@ export default function AttendancePage() {
   const isLoading = activeEmployeeCode === "me" ? myLogsQuery.isLoading : employeeLogsQuery.isLoading;
 
   const error = activeEmployeeCode === "me"
-      ? (myLogsQuery.isError ? "Unable to load attendance records. Please try again." : null)
-      : (employeeLogsQuery.isError ? "Employee code not found or unable to load records." : null);
+    ? (myLogsQuery.isError ? "Unable to load attendance records. Please try again." : null)
+    : (employeeLogsQuery.isError ? "Employee code not found or unable to load records." : null);
 
   const weekendDaysStr = dashboardStatsQuery.data?.weekendDays ?? "Saturday,Sunday";
   const holidays = dashboardStatsQuery.data?.allHolidays ?? [];
@@ -601,125 +614,135 @@ export default function AttendancePage() {
         isDestructive={false}
       />
 
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
-        <div className="flex flex-col">
-          <h1 className="text-gray-900 dark:text-gray-100 text-xl font-bold tracking-tight flex items-center gap-3">
-            <div className="w-1.5 h-6 bg-indigo-600 rounded-full" />
-            {activeEmployeeCode === "me" ? "My Attendance" : "Employee Records"}
-          </h1>
-          {activeEmployeeCode !== "me" && selectedEmployee && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Viewing: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{selectedEmployee.fullName}</span>
-              </span>
-              <button
-                onClick={() => {
-                  setActiveEmployeeCode("me");
-                  setSearchInput("");
-                }}
-                className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider
-                  bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400
-                  rounded-full border border-gray-200 dark:border-gray-700 transition-all hover:border-indigo-200"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Back to Me
-              </button>
+      {/* ── HERO BANNER ── */}
+      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 p-5 shadow-xl shadow-indigo-200/40 dark:shadow-indigo-900/40 sm:p-6 md:p-8">
+        {/* Row 1: Icon + Title + Refresh */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
+              <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {isManager && (
-            <div className="relative" ref={searchContainerRef}>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchInput}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search employee..."
-                  className="pl-9 pr-4 py-2 text-sm bg-white dark:bg-gray-900 
-                    border border-gray-200 dark:border-gray-700 rounded-xl
-                    focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
-                    w-[240px] shadow-sm transition-all"
-                />
-                <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-
-              {/* Autocomplete Dropdown */}
-              {isSearchFocused && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 
-                  border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[100] overflow-hidden 
-                  backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="p-1.5">
-                    <button
-                      onClick={() => {
-                        setActiveEmployeeCode("me");
-                        setSearchInput("");
-                        setIsSearchFocused(false);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between
-                        hover:bg-indigo-50 dark:hover:bg-indigo-900/30 group transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                          ME
-                        </div>
-                        <span className="font-semibold text-gray-700 dark:text-gray-200">Personal Records</span>
-                      </div>
-                      <span className="text-[10px] uppercase font-bold text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">Select</span>
-                    </button>
-
-                    {suggestions.map((emp) => (
-                      <button
-                        key={emp.employeeCode}
-                        onClick={() => {
-                          setActiveEmployeeCode(emp.employeeCode);
-                          setSearchInput(emp.fullName);
-                          setIsSearchFocused(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between
-                          hover:bg-gray-50 dark:hover:bg-gray-800/60 group transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 font-semibold">
-                            {emp.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">{emp.fullName}</p>
-                            <p className="text-[10px] font-mono text-gray-500">{emp.employeeCode}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] uppercase font-bold text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">View</span>
-                      </button>
-                    ))}
-                    {searchInput.trim() && suggestions.length === 0 && (
-                      <div className="px-3 py-3 text-center">
-                        <p className="text-xs text-gray-500 italic">No matches for "{searchInput}"</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">
+                {activeEmployeeCode === "me" ? "Personal Records" : "Manager View"}
+              </p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white md:text-3xl truncate">
+                {activeEmployeeCode === "me" ? "My Attendance" : "Employee Records"}
+              </h1>
             </div>
-          )}
+          </div>
 
           <button
             onClick={handleRefresh}
             disabled={isLoading}
             title="Refresh Attendance Data"
-            className="p-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
-              text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/20 transition-all hover:bg-white/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} strokeWidth={2.5} />
           </button>
         </div>
+
+        {/* Employee viewing banner (only when viewing another employee) */}
+        {activeEmployeeCode !== "me" && selectedEmployee && (
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl bg-white/10 px-4 py-2.5 ring-1 ring-white/20">
+            <span className="text-sm font-medium text-indigo-100/80 truncate">
+              Viewing: <span className="text-white font-bold">{selectedEmployee.fullName}</span>
+            </span>
+            <button
+              onClick={() => {
+                setActiveEmployeeCode("me");
+                setSearchInput("");
+              }}
+              className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider
+                bg-white/10 text-white/90 hover:text-white
+                rounded-xl ring-1 ring-white/20 transition-all hover:bg-white/20 active:scale-95"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Back to Me
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* ── SEARCH BAR (separate from hero so dropdown isn't clipped) ── */}
+      {isManager && (
+        <div className="relative" ref={searchContainerRef}>
+          <div className="relative">
+            <input
+              type="text"
+              value={searchInput}
+              onFocus={() => setIsSearchFocused(true)}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search employee by name or code..."
+              className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-gray-900
+                border border-gray-200 dark:border-gray-800 rounded-2xl text-gray-800 dark:text-white
+                placeholder-gray-400 dark:placeholder-gray-500 shadow-sm
+                focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+            />
+            <svg className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          {/* Autocomplete Dropdown */}
+          {isSearchFocused && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900
+              border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[100] overflow-hidden
+              backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="p-1.5 max-h-64 overflow-y-auto">
+                <button
+                  onClick={() => {
+                    setActiveEmployeeCode("me");
+                    setSearchInput("");
+                    setIsSearchFocused(false);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between
+                    hover:bg-indigo-50 dark:hover:bg-indigo-900/30 group transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                      ME
+                    </div>
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">Personal Records</span>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">Select</span>
+                </button>
+
+                {suggestions.map((emp) => (
+                  <button
+                    key={emp.employeeCode}
+                    onClick={() => {
+                      setActiveEmployeeCode(emp.employeeCode);
+                      setSearchInput(emp.fullName);
+                      setIsSearchFocused(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between
+                      hover:bg-gray-50 dark:hover:bg-gray-800/60 group transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 font-semibold">
+                        {emp.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800 dark:text-gray-100">{emp.fullName}</p>
+                        <p className="text-[10px] font-mono text-gray-500">{emp.employeeCode}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">View</span>
+                  </button>
+                ))}
+                {searchInput.trim() && suggestions.length === 0 && (
+                  <div className="px-3 py-3 text-center">
+                    <p className="text-xs text-gray-500 italic">No matches for "{searchInput}"</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">

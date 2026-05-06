@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { 
-  Calculator, Lock, CheckCircle2, AlertCircle, FileText, 
+  Calculator, Lock, FileText, 
   Users, IndianRupee, Timer, Edit3, RotateCcw
 } from "lucide-react";
 import type { PayslipResponse } from "../../types/payroll";

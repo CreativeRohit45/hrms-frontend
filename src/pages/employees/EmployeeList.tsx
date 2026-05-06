@@ -179,60 +179,92 @@ function EmployeeCard({
   onDelete: () => void;
   hasEdit: boolean;
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const palette = getPalette(emp.fullName);
   const initials = getInitials(emp.fullName);
   const shiftStr = `${formatShiftTime(emp.shiftStartTime)} – ${formatShiftTime(emp.shiftEndTime)}`;
 
+  const handleMobileClick = () => {
+    if (window.matchMedia("(max-width: 767px)").matches && hasEdit) {
+      setSheetOpen(true);
+    }
+  };
+
   return (
-    <div
-      className="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-gray-200/60 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
-      style={{ animationDelay: `${index * 40}ms` }}
-    >
-      {/* Card body */}
-      <div className="flex flex-1 flex-col gap-4 p-6">
-        {/* Top: Avatar + menu */}
-        <div className="flex items-start justify-between">
-          <div
-            className={`flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-black ring-2 ${palette.bg} ${palette.text} ${palette.ring} transition-transform duration-200 group-hover:scale-105`}
-          >
-            {initials}
+    <>
+      <ActionSheet
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Employee Actions"
+        items={[
+          ...(hasEdit ? [{
+            label: "Edit Employee",
+            description: "Update profile, payroll, role, and leave details",
+            icon: <PencilLine className="h-5 w-5" />,
+            onClick: onEdit,
+          }] : []),
+          ...(hasEdit ? [{
+            label: "Delete Employee",
+            description: "Remove this employee record permanently",
+            icon: <Trash2 className="h-5 w-5" />,
+            tone: "danger" as const,
+            onClick: onDelete,
+          }] : []),
+        ]}
+      />
+      <div
+        onClick={handleMobileClick}
+        className="group flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-gray-200/60 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30 max-md:active:scale-[0.98] cursor-pointer md:cursor-default"
+        style={{ animationDelay: `${index * 40}ms` }}
+      >
+        {/* Card body */}
+        <div className="flex flex-1 flex-col gap-4 p-6">
+          {/* Top: Avatar + menu */}
+          <div className="flex items-start justify-between">
+            <div
+              className={`flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-black ring-2 ${palette.bg} ${palette.text} ${palette.ring} transition-transform duration-200 group-hover:scale-105`}
+            >
+              {initials}
+            </div>
+            <div className="hidden md:block">
+              <ActionMenu onEdit={onEdit} onDelete={onDelete} hasEdit={hasEdit} />
+            </div>
           </div>
-          <ActionMenu onEdit={onEdit} onDelete={onDelete} hasEdit={hasEdit} />
+
+          {/* Name + Designation */}
+          <div className="min-w-0 space-y-0.5">
+            <p className="truncate text-base font-black tracking-tight text-gray-900 dark:text-white">
+              {emp.fullName}
+            </p>
+            <p className="truncate text-xs font-semibold text-gray-400 dark:text-gray-500">
+              {emp.designation || "—"}
+            </p>
+            <p className="mt-1 font-mono text-[10px] font-black tracking-wider text-indigo-400/80">
+              {emp.employeeCode}
+            </p>
+          </div>
+
+          {/* Department pill */}
+          <DeptPill name={emp.departmentName} />
         </div>
 
-        {/* Name + Designation */}
-        <div className="min-w-0 space-y-0.5">
-          <p className="truncate text-base font-black tracking-tight text-gray-900 dark:text-white">
-            {emp.fullName}
-          </p>
-          <p className="truncate text-xs font-semibold text-gray-400 dark:text-gray-500">
-            {emp.designation || "—"}
-          </p>
-          <p className="mt-1 font-mono text-[10px] font-black tracking-wider text-indigo-400/80">
-            {emp.employeeCode}
-          </p>
+        {/* Card footer: shift info */}
+        <div className="flex items-center gap-2 border-t border-gray-100 bg-gray-50/60 px-6 py-3.5 dark:border-gray-800 dark:bg-gray-800/30">
+          <Clock className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+          <span className="min-w-0 truncate font-mono text-[11px] font-bold text-gray-500 dark:text-gray-400">
+            {shiftStr}
+          </span>
+          {emp.shiftName && (
+            <>
+              <span className="text-gray-200 dark:text-gray-700">·</span>
+              <span className="min-w-0 truncate text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                {emp.shiftName}
+              </span>
+            </>
+          )}
         </div>
-
-        {/* Department pill */}
-        <DeptPill name={emp.departmentName} />
       </div>
-
-      {/* Card footer: shift info */}
-      <div className="flex items-center gap-2 border-t border-gray-100 bg-gray-50/60 px-6 py-3.5 dark:border-gray-800 dark:bg-gray-800/30">
-        <Clock className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-        <span className="min-w-0 truncate font-mono text-[11px] font-bold text-gray-500 dark:text-gray-400">
-          {shiftStr}
-        </span>
-        {emp.shiftName && (
-          <>
-            <span className="text-gray-200 dark:text-gray-700">·</span>
-            <span className="min-w-0 truncate text-[11px] font-medium text-gray-400 dark:text-gray-500">
-              {emp.shiftName}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 

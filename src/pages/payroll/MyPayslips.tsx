@@ -80,14 +80,26 @@ export default function MyPayslips() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-5 overflow-x-hidden px-3 pb-24 pt-3 sm:px-6 md:px-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">My Payslips</h1>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">View and download processed salary statements.</p>
-        </div>
-        <div className="w-full sm:w-40">
-          <SelectField compact value={yearFilter} onChange={setYearFilter} options={yearOptions} className="!space-y-0" />
+    <div className="mx-auto w-full max-w-4xl space-y-5 overflow-x-hidden px-3 pb-24 sm:space-y-6 sm:px-6 md:px-8">
+      {/* ── HERO BANNER ── */}
+      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 p-5 shadow-xl shadow-indigo-200/40 dark:shadow-indigo-900/40 sm:p-6 md:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
+              <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">
+                Salary Statements
+              </p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white md:text-3xl truncate">
+                My Payslips
+              </h1>
+            </div>
+          </div>
+          <div className="w-full sm:w-40 [&_select]:!rounded-2xl [&_select]:!border-white/20 [&_select]:!bg-white/10 [&_select]:!text-white [&_select]:!shadow-none [&_svg]:!text-white/60 [&_label]:!text-indigo-200">
+            <SelectField compact value={yearFilter} onChange={setYearFilter} options={yearOptions} className="!space-y-0" />
+          </div>
         </div>
       </div>
 

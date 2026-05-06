@@ -23,7 +23,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">System Settings</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
           Manage shifts, holidays, company configuration, and departments
         </p>
@@ -58,7 +58,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+      <div className="overflow-x-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
         {activeTab === "shifts" && <ShiftsTab />}
         {activeTab === "holidays" && <HolidaysTab />}
         {activeTab === "leave-types" && <LeaveTypesTab />}

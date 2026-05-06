@@ -16,13 +16,19 @@ interface BalanceHistoryModalProps {
   onClose: () => void;
   audits: any[];
   isLoading?: boolean;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 export function BalanceHistoryModal({
   isOpen,
   onClose,
   audits,
-  isLoading
+  isLoading,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage
 }: BalanceHistoryModalProps) {
   return (
     <AppModal
@@ -127,6 +133,18 @@ export function BalanceHistoryModal({
                   </div>
                 );
               })}
+            </div>
+          )}
+          
+          {hasNextPage && (
+            <div className="pt-4 text-center">
+              <button
+                onClick={() => fetchNextPage && fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50"
+              >
+                {isFetchingNextPage ? "Loading..." : "Load More"}
+              </button>
             </div>
           )}
         </div>

@@ -219,7 +219,7 @@ export default function Dashboard() {
                 <CalendarDays className="h-7 w-7" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-gray-900 dark:text-white">Master Data</h3>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">Settings</h3>
                 <p className="mt-1 text-sm font-medium text-gray-500">Configure system settings and holidays</p>
               </div>
             </div>

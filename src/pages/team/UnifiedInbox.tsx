@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
@@ -583,6 +584,7 @@ export default function UnifiedInbox() {
   const [page, setPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<UnifiedRequest | null>(null);
+  const queryClient = useQueryClient();
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [revokeModal, setRevokeModal] = useState<{ isOpen: boolean; request: UnifiedRequest | null }>({
     isOpen: false,
@@ -666,6 +668,26 @@ export default function UnifiedInbox() {
 
     const rawId = parseInt(request.id.split("-")[1], 10);
     setActioningId(request.id);
+    
+    // --- Optimistic UI Update ---
+    const queryKey = [
+      'attendance', 'inbox', activeTab, 
+      requestType === "ALL" ? undefined : requestType, 
+      canFilterDepartment ? departmentId : undefined, 
+      page
+    ];
+    
+    const previousData = queryClient.getQueryData(queryKey);
+    
+    queryClient.setQueryData(queryKey, (oldData: any) => {
+      if (!oldData || !oldData.content) return oldData;
+      return {
+        ...oldData,
+        content: oldData.content.filter((req: any) => req.id !== request.id)
+      };
+    });
+    // ----------------------------
+
     try {
       if (request.type === "LEAVE") {
         if (action === "approve") await approveLeave.mutateAsync(rawId);
@@ -682,6 +704,8 @@ export default function UnifiedInbox() {
       }
       pushToast({ title: "Success", message: `${request.type} ${action}d`, tone: "success" });
     } catch {
+      // Rollback on error
+      queryClient.setQueryData(queryKey, previousData);
       pushToast({ title: "Error", message: `Failed to ${action} request`, tone: "error" });
     } finally {
       setActioningId(null);
@@ -734,7 +758,7 @@ export default function UnifiedInbox() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-5 px-3 sm:space-y-6 sm:px-6 md:px-8 pb-20">
+    <div className="mx-auto w-full max-w-5xl overflow-x-hidden space-y-5 px-3 sm:space-y-6 sm:px-6 md:px-8 pb-20">
       <FilterSheet
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}

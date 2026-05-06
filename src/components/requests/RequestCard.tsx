@@ -18,24 +18,24 @@ function PizzaTracker({ req }: { req: Request }) {
       </div>
       
       <div className="flex justify-between px-0.5">
-        <div className="flex flex-col items-start gap-1">
-          <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter text-emerald-600">
-            <CheckCircle2 className="h-2.5 w-2.5" />
-            Submitted
+        <div className="flex flex-col items-start flex-1 gap-1">
+          <div className="flex items-start gap-1 text-[9px] font-black uppercase tracking-tighter text-emerald-600 whitespace-normal text-left leading-tight break-words">
+            <CheckCircle2 className="h-2.5 w-2.5 shrink-0 mt-[1px]" />
+            <span>Submitted</span>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1">
-          <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter ${isPending ? 'text-amber-600 animate-pulse' : isFinal ? 'text-amber-600/50' : 'text-gray-300 dark:text-gray-700'}`}>
-            <Timer className="h-2.5 w-2.5" />
-            {isPending ? `Pending ${req.pendingApproverName || 'Manager'}` : 'Review'}
+        <div className="flex flex-col items-center flex-1 gap-1 px-1">
+          <div className={`flex items-start justify-center gap-1 text-[9px] font-black uppercase tracking-tighter whitespace-normal text-center leading-tight break-words ${isPending ? 'text-amber-600 animate-pulse' : isFinal ? 'text-amber-600/50' : 'text-gray-300 dark:text-gray-700'}`}>
+            <Timer className="h-2.5 w-2.5 shrink-0 mt-[1px]" />
+            <span>{isPending ? `Pending ${req.pendingApproverName || 'Manager'}` : 'Review'}</span>
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-1">
-          <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter ${isFinal ? (isRejected ? 'text-rose-600' : 'text-emerald-600') : 'text-gray-300 dark:text-gray-700'}`}>
-            {isRejected ? <Ban className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />}
-            {isApproved ? `Approved by ${req.actionByName || 'Admin'}` : isRejected ? req.status : 'Final'}
+        <div className="flex flex-col items-end flex-1 gap-1">
+          <div className={`flex items-start justify-end gap-1 text-[9px] font-black uppercase tracking-tighter whitespace-normal text-right leading-tight break-words ${isFinal ? (isRejected ? 'text-rose-600' : 'text-emerald-600') : 'text-gray-300 dark:text-gray-700'}`}>
+            {isRejected ? <Ban className="h-2.5 w-2.5 shrink-0 mt-[1px]" /> : <CheckCircle2 className="h-2.5 w-2.5 shrink-0 mt-[1px]" />}
+            <span>{isApproved ? `Approved by ${req.actionByName || 'Admin'}` : isRejected ? req.status : 'Final'}</span>
           </div>
         </div>
       </div>

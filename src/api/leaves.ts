@@ -13,6 +13,7 @@ import type {
   TeamMemberOnLeave,
   DepartmentAbsenteeDTO,
 } from "../types/leave";
+import type { PageResponse } from "../types/common";
 
 // ═══════════════════════════════════════════════════════════════════
 //  EMPLOYEE ENDPOINTS
@@ -34,13 +35,15 @@ export async function getMyBalances(): Promise<LeaveBalanceResponse[]> {
 }
 
 export async function getMyAuditTrail(
+  page: number = 0,
+  size: number = 20,
   leaveTypeId?: number,
   year?: number
-): Promise<LeaveBalanceAuditResponse[]> {
-  const params: Record<string, string> = {};
+): Promise<PageResponse<LeaveBalanceAuditResponse>> {
+  const params: Record<string, string> = { page: String(page), size: String(size) };
   if (leaveTypeId) params.leaveTypeId = String(leaveTypeId);
   if (year) params.year = String(year);
-  const res = await apiClient.get<LeaveBalanceAuditResponse[]>("/api/v1/leaves/balances/audit", { params });
+  const res = await apiClient.get<PageResponse<LeaveBalanceAuditResponse>>("/api/v1/leaves/balances/audit", { params });
   return res.data;
 }
 
@@ -109,13 +112,15 @@ export async function getEmployeeBalances(employeeId: number): Promise<LeaveBala
 
 export async function getEmployeeAuditTrail(
   employeeId: number,
+  page: number = 0,
+  size: number = 20,
   leaveTypeId?: number,
   year?: number
-): Promise<LeaveBalanceAuditResponse[]> {
-  const params: Record<string, string> = {};
+): Promise<PageResponse<LeaveBalanceAuditResponse>> {
+  const params: Record<string, string> = { page: String(page), size: String(size) };
   if (leaveTypeId) params.leaveTypeId = String(leaveTypeId);
   if (year) params.year = String(year);
-  const res = await apiClient.get<LeaveBalanceAuditResponse[]>(
+  const res = await apiClient.get<PageResponse<LeaveBalanceAuditResponse>>(
     `/api/v1/leaves/admin/audit/${employeeId}`, { params }
   );
   return res.data;

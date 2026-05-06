@@ -56,7 +56,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   // --- SYSTEM SETTINGS ---
   { 
-    label: "Master Data", 
+    label: "Settings", 
     path: "/app/settings", 
     group: "System Settings", 
     roles: ["SUPER_ADMIN"] 

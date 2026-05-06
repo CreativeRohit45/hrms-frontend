@@ -60,7 +60,8 @@ export default function LeaveTypesTab() {
       ) : leaveTypes.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">No leave types configured yet.</div>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-800">
@@ -135,6 +136,69 @@ export default function LeaveTypesTab() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile card layout */}
+        <div className="space-y-3 md:hidden">
+          {leaveTypes.map((lt) => (
+            <div key={lt.id} className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-800/20">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{lt.name}</p>
+                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{lt.code}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      lt.active
+                        ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-400"
+                    }`}>
+                      {lt.active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                    {lt.paid ? (
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                        <Check size={10} /> Paid
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-[10px]">
+                        <X size={10} /> Unpaid
+                      </span>
+                    )}
+                    <span className="text-gray-300 dark:text-gray-600">·</span>
+                    <span>{lt.monthlyAccrualRate}d/mo accrual</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setEditingType(lt); setShowForm(true); }}
+                    className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-indigo-600 transition-colors"
+                  >
+                    <PencilLine size={16} />
+                  </button>
+                  <button
+                    onClick={() => lt.id && setConfirmDelete(lt.id)}
+                    className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-white p-2.5 dark:bg-gray-900">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Annual Quota</p>
+                  <p className="mt-0.5 text-sm font-bold text-indigo-600 dark:text-indigo-400">{lt.defaultAnnualQuota} days</p>
+                </div>
+                <div className="rounded-xl bg-white p-2.5 dark:bg-gray-900">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Carry Forward</p>
+                  <p className="mt-0.5 text-sm font-bold text-gray-900 dark:text-white">
+                    {lt.carryForwardAllowed ? `Up to ${lt.maxCarryForwardDays}d` : "No"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {showForm && (

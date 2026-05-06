@@ -3,9 +3,12 @@ import {
   Plus,
   Palmtree,
   Ticket,
-  AlertCircle,
   Sparkles,
   FileText,
+  Inbox,
+  CheckCircle2,
+  Clock,
+  LayoutGrid,
 } from "lucide-react";
 
 // ── TanStack Query hooks (parallel fetching) ──────────────────────
@@ -98,10 +101,10 @@ export default function MyRequests() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl overflow-x-hidden space-y-5 px-3 pb-28 pt-3 sm:space-y-6 sm:px-6 md:px-8">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-3 pb-28 pt-2 sm:space-y-6 sm:px-6 md:px-8 overflow-x-hidden">
 
       {/* ── MODAL PORTAL ──────────────────────────────────────────── */}
-      <div className="relative z-[1000]">
+      <div>
         {showLeaveModal && (
           <LeaveApplyModal
             onClose={() => setShowLeaveModal(false)}
@@ -122,79 +125,105 @@ export default function MyRequests() {
         )}
       </div>
 
-      {/* ── HERO ──────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-indigo-600 px-4 py-6 text-white shadow-xl shadow-indigo-600/20 sm:rounded-3xl sm:px-8 sm:py-9">
-        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-8 -left-8 h-36 w-36 rounded-full bg-indigo-400/30 blur-2xl" />
-
-        <div className="relative space-y-5">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/80">
-              Requests Hub
-            </p>
-            <h1 className="mt-1 text-2xl font-black leading-tight tracking-tight sm:text-3xl">
-              My Requests
-            </h1>
-            <p className="mt-1.5 max-w-sm text-sm text-indigo-100/70">
-              Track leaves &amp; gatepasses. Tap any card to view details.
-            </p>
-          </div>
-
-          {/* Stats row */}
-          <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
-            {[
-              { label: "Approved", value: requests.filter((r) => r.status === "APPROVED").length },
-              { label: "Pending", value: requests.filter((r) => r.status === "PENDING").length },
-              { label: "Total", value: requests.length },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="min-w-0 rounded-2xl border border-white/10 bg-white/10 px-2 py-3 text-center backdrop-blur-sm sm:px-4"
-              >
-                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200/70">
-                  {stat.label}
-                </p>
-                <p className="mt-0.5 text-2xl font-black">{stat.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA buttons — stacked on mobile, row on sm+ */}
-          <div className="flex flex-col gap-2.5 sm:flex-row">
-            <button
-              type="button"
-              onClick={handleOpenLeave}
-              className="group flex flex-1 min-h-[48px] items-center justify-center gap-2.5 rounded-2xl border border-white/20 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/25 active:scale-[0.97]"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-transform duration-200 group-hover:rotate-90">
-                <Plus className="h-4 w-4" />
-              </span>
-              Apply for Leave
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenGatepass}
-              disabled={!isActive}
-              title={!isActive ? "You must be punched in to request a gatepass" : ""}
-              className="group flex flex-1 min-h-[48px] items-center justify-center gap-2.5 rounded-2xl border border-white/20 bg-white/15 px-4 py-3 text-sm font-bold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/25 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-transform duration-200 group-hover:rotate-90">
-                <Plus className="h-4 w-4" />
-              </span>
-              Request Gatepass
-            </button>
+      {/* ── HERO BANNER ── */}
+      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 p-5 shadow-xl shadow-indigo-200/40 dark:shadow-indigo-900/40 sm:p-6 md:p-8">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
+              <Inbox className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">
+                Requests Hub
+              </p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white md:text-3xl truncate">
+                My Requests
+              </h1>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ── STATS ROW (Outside) ───────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { 
+            label: "Approved", 
+            value: requests.filter((r) => r.status === "APPROVED").length,
+            icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />,
+            bg: "bg-emerald-50/50 dark:bg-emerald-950/10"
+          },
+          { 
+            label: "Pending", 
+            value: requests.filter((r) => r.status === "PENDING").length,
+            icon: <Clock className="h-3.5 w-3.5 text-indigo-500" />,
+            bg: "bg-indigo-50/50 dark:bg-indigo-950/10"
+          },
+          { 
+            label: "Total", 
+            value: requests.length,
+            icon: <LayoutGrid className="h-3.5 w-3.5 text-gray-400" />,
+            bg: "bg-gray-50/50 dark:bg-gray-800/40"
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-3xl border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-5">
+            <div className="flex items-center gap-2 mb-1">
+              {stat.icon}
+              <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">{stat.label}</p>
+            </div>
+            <p className="text-xl font-black text-gray-900 dark:text-white sm:text-2xl">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── ACTION BAR ────────────────────────────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          onClick={handleOpenLeave}
+          className="group relative flex items-center justify-between overflow-hidden rounded-3xl bg-white p-2 pl-6 shadow-sm ring-1 ring-gray-100 transition-all hover:shadow-md hover:ring-indigo-100 active:scale-[0.98] dark:bg-gray-900 dark:ring-gray-800"
+        >
+          <div className="flex flex-col items-start">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Time Off</p>
+            <p className="text-sm font-black text-gray-900 dark:text-white">Apply for Leave</p>
+          </div>
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition-all group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-900/30 dark:text-indigo-400">
+            <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
+          </div>
+        </button>
+
+        <button
+          onClick={handleOpenGatepass}
+          disabled={!isActive}
+          className="group relative flex items-center justify-between overflow-hidden rounded-3xl bg-white p-2 pl-6 shadow-sm ring-1 ring-gray-100 transition-all hover:shadow-md hover:ring-indigo-100 active:scale-[0.98] disabled:opacity-50 dark:bg-gray-900 dark:ring-gray-800"
+        >
+          <div className="flex flex-col items-start">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Exit Permit</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-black text-gray-900 dark:text-white">Request Gatepass</p>
+              {!isActive && <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[8px] font-bold text-red-500 uppercase tracking-tighter dark:bg-red-950/20">Inactive</span>}
+            </div>
+          </div>
+          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${isActive ? 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-600'} transition-all`}>
+            <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
+          </div>
+        </button>
+      </div>
+
       {/* ── ACTIVITY FEED ─────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800/60 dark:bg-gray-900 sm:rounded-3xl">
-        <div className="flex items-center gap-2 px-4 pt-5 pb-4 sm:px-6">
-          <FileText className="h-4 w-4 text-indigo-500" />
-          <h2 className="text-base font-black text-gray-900 dark:text-white">Activity</h2>
+      <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-sm dark:border-gray-800/60 dark:bg-gray-900">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 sm:px-10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800">
+              <FileText className="h-5 w-5 text-indigo-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-gray-900 dark:text-white">Activity Timeline</h2>
+              <p className="text-xs text-gray-400">History of all your requests</p>
+            </div>
+          </div>
         </div>
 
-        <div className="px-4 pb-1 sm:px-6">
+        <div className="px-6 pb-2 sm:px-10">
           <SegmentedControl
             value={activeTab}
             onChange={setActiveTab}
@@ -206,18 +235,16 @@ export default function MyRequests() {
           />
         </div>
 
-        <div className="space-y-3 px-4 py-4 sm:px-6 sm:pb-6">
+        <div className="space-y-3 px-6 py-6 sm:px-10 sm:pb-10">
           {loading ? (
             <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
           ) : visibleRequests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-200 py-14 dark:border-gray-700/60">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-800">
-                <AlertCircle className="h-7 w-7 text-gray-300 dark:text-gray-600" />
+            <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-gray-200 py-16 dark:border-gray-700/60">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-800">
+                <Inbox className="h-8 w-8 text-gray-300 dark:text-gray-600" />
               </div>
-              <p className="mt-4 text-sm font-bold text-gray-400">No requests found</p>
-              <p className="mt-1 text-xs text-gray-300 dark:text-gray-600">
-                Tap + to create your first one.
-              </p>
+              <p className="mt-4 text-sm font-bold text-gray-900 dark:text-white">No requests yet</p>
+              <p className="mt-1 text-xs text-gray-400">Your application history will appear here.</p>
             </div>
           ) : (
             visibleRequests.map((req) => (

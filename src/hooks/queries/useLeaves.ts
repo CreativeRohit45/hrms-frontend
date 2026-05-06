@@ -5,7 +5,7 @@
 //  with cross-domain cache invalidation to prevent stale UI states.
 // ═══════════════════════════════════════════════════════════════════
 
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
 import { queryClient } from '../../lib/queryClient';
 import {
@@ -19,7 +19,7 @@ import {
 import type {
   LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
   LeaveApplyRequest, LeaveActionRequest, LeaveGrantRequest,
-  LeaveBalanceAuditResponse, LeaveOverrideRequest, LeavePreviewResponse,
+  LeaveOverrideRequest, LeavePreviewResponse,
 } from '../../types/leave';
 import { useState, useEffect } from 'react';
 
@@ -57,9 +57,11 @@ export function usePendingLeaves(enabled: boolean) {
 }
 
 export function useMyAuditTrail(leaveTypeId?: number, year?: number) {
-  return useQuery<LeaveBalanceAuditResponse[]>({
+  return useInfiniteQuery({
     queryKey: queryKeys.leaves.auditTrail(leaveTypeId, year),
-    queryFn: () => getMyAuditTrail(leaveTypeId, year),
+    queryFn: ({ pageParam = 0 }) => getMyAuditTrail(pageParam, 10, leaveTypeId, year),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (!lastPage.last ? lastPage.number + 1 : undefined),
   });
 }
 
@@ -81,9 +83,11 @@ export function useEmployeeBalances(employeeId: number, enabled = true) {
 }
 
 export function useEmployeeAuditTrail(employeeId: number, enabled = true) {
-  return useQuery<LeaveBalanceAuditResponse[]>({
+  return useInfiniteQuery({
     queryKey: ['leaves', 'admin', 'audit', employeeId],
-    queryFn: () => getEmployeeAuditTrail(employeeId),
+    queryFn: ({ pageParam = 0 }) => getEmployeeAuditTrail(employeeId, pageParam, 10),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (!lastPage.last ? lastPage.number + 1 : undefined),
     enabled: enabled && employeeId > 0,
   });
 }

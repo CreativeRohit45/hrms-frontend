@@ -207,99 +207,43 @@ export default function DailyRoster() {
         {sheetFilterControls}
       </FilterSheet>
 
-      <div className="flex flex-col gap-5 rounded-2xl bg-white p-4 shadow-sm border border-gray-100 dark:border-gray-800 dark:bg-slate-900 sm:rounded-[2.5rem] sm:p-8">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-indigo-500 shadow-lg shadow-indigo-500/20">
-              <Users className="h-7 w-7 text-white" />
+      {/* ── HERO BANNER ──────────────────────────────────────────── */}
+      <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 p-6 shadow-xl shadow-indigo-200/40 dark:shadow-indigo-900/40 md:p-8">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
+              <Users className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">Daily Roster</h1>
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-slate-400">Team Visibility</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">Team Visibility</p>
+              <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">Daily Roster</h1>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => exportToCSV(filteredRoster, `roster_${selectedDateStr}.csv`)}
-              className="flex items-center gap-2 h-[44px] px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-            <div className="flex items-center gap-2 rounded-2xl bg-gray-50 p-1.5 ring-1 ring-gray-100 dark:bg-white/10 dark:ring-white/10">
-            <button onClick={() => shiftDate(-1)} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-600 transition-all hover:bg-gray-100 dark:text-white dark:hover:bg-white/10">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-2 px-1 [&>div>button]:!h-auto [&>div>button]:!border-none [&>div>button]:!bg-transparent [&>div>button]:!px-2 [&>div>button]:!py-1.5 [&>div>button]:!text-sm [&>div>button]:!font-black [&>div>button]:!text-gray-700 dark:[&>div>button]:!text-white [&>div>button]:!shadow-none [&>div>button]:!ring-0 [&_label]:!hidden">
-              <DatePickerField align="right" value={selectedDateStr} onChange={(v) => { setSelectedDateStr(v); setCurrentPage(0); }} />
-            </div>
-            {isToday && <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">Today</span>}
-            <button onClick={() => shiftDate(1)} disabled={isToday} className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-600 transition-all hover:bg-gray-100 disabled:opacity-20 dark:text-white dark:hover:bg-white/10">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-            </div>
-          </div>
-        </div>
-
-        <div className={`grid gap-3 md:items-center ${canFilterDepartment ? "md:grid-cols-[minmax(0,1fr)_190px_190px_190px]" : "md:grid-cols-[minmax(0,1fr)_190px_190px]"}`}>
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-            <input
-              type="text"
-              placeholder="Quick search name or code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-2xl bg-gray-50 py-3.5 pl-11 pr-4 text-sm font-medium text-gray-900 placeholder-gray-400 outline-none ring-1 ring-gray-200 focus:ring-indigo-500/50 dark:bg-white/5 dark:text-white dark:placeholder-slate-500 dark:ring-white/10"
-            />
-          </div>
-          <div className="flex items-center gap-2 md:hidden">
-            <MobileFilterButton
-              onClick={() => setFiltersOpen(true)}
-              activeCount={(selectedShiftId !== "ALL" ? 1 : 0) + (selectedStatus !== "ALL" ? 1 : 0) + (selectedDepartmentId !== "ALL" ? 1 : 0)}
-            />
-          </div>
-          {canFilterDepartment && (
-            <div className="hidden md:block [&_select]:!rounded-2xl [&_select]:!border-gray-200 [&_select]:!bg-gray-50 [&_select]:!text-gray-900 [&_select]:!shadow-none [&_select]:focus:!border-indigo-400 [&_svg]:!text-gray-400 dark:[&_select]:!border-white/10 dark:[&_select]:!bg-white/10 dark:[&_select]:!text-white dark:[&_svg]:!text-white/50">
-              <SelectField
-                compact
-                value={selectedDepartmentId === "ALL" ? "" : String(selectedDepartmentId)}
-                onChange={(v) => {
-                  setSelectedDepartmentId(v === "" ? "ALL" : Number(v));
-                  setCurrentPage(0);
-                }}
-                placeholder="All Departments"
-                options={departments.map((d: any) => ({ label: d.name, value: String(d.id) }))}
-              />
-            </div>
-          )}
-          <div className="hidden md:block [&_select]:!rounded-2xl [&_select]:!border-gray-200 [&_select]:!bg-gray-50 [&_select]:!text-gray-900 [&_select]:!shadow-none [&_select]:focus:!border-indigo-400 [&_svg]:!text-gray-400 dark:[&_select]:!border-white/10 dark:[&_select]:!bg-white/10 dark:[&_select]:!text-white dark:[&_svg]:!text-white/50">
-            <SelectField
-              compact
-              value={selectedShiftId === "ALL" ? "" : String(selectedShiftId)}
-              onChange={(v) => {
-                setSelectedShiftId(v === "" ? "ALL" : Number(v));
-                setCurrentPage(0);
-              }}
-              placeholder="All Shifts"
-              options={shifts.map((s) => ({ label: s.shiftName, value: String(s.id) }))}
-            />
-          </div>
-          <div className="hidden md:block [&_select]:!rounded-2xl [&_select]:!border-gray-200 [&_select]:!bg-gray-50 [&_select]:!text-gray-900 [&_select]:!shadow-none [&_select]:focus:!border-indigo-400 [&_svg]:!text-gray-400 dark:[&_select]:!border-white/10 dark:[&_select]:!bg-white/10 dark:[&_select]:!text-white dark:[&_svg]:!text-white/50">
-            <SelectField
-              compact
-              value={selectedStatus === "ALL" ? "" : selectedStatus}
-              onChange={(v) => {
-                setSelectedStatus(v || "ALL");
-                setCurrentPage(0);
-              }}
-              placeholder="All Statuses"
-              options={statusOptions.filter((o) => o.value !== "ALL")}
-            />
-          </div>
+          <button
+            onClick={() => exportToCSV(filteredRoster, `roster_${selectedDateStr}.csv`)}
+            className="flex items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 text-xs font-bold text-white ring-1 ring-white/20 backdrop-blur-sm transition-all hover:bg-white/25 active:scale-95"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
         </div>
       </div>
 
+      {/* ── DATE NAVIGATION (separate row so calendar popup isn't clipped) ── */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button onClick={() => shiftDate(-1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-all hover:bg-gray-50 active:scale-95 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <div className="min-w-0 flex-1 [&_button]:!rounded-2xl [&_button]:!border-gray-200 [&_button]:!shadow-sm [&_button]:!font-bold dark:[&_button]:!border-gray-800 dark:[&_button]:!bg-gray-900 [&_label]:!hidden">
+          <DatePickerField value={selectedDateStr} onChange={(v) => { setSelectedDateStr(v); setCurrentPage(0); }} />
+        </div>
+        <button onClick={() => shiftDate(1)} disabled={isToday} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-all hover:bg-gray-50 disabled:opacity-30 active:scale-95 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800">
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        {isToday && <span className="hidden rounded-lg bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-600 sm:inline dark:bg-emerald-950/30 dark:text-emerald-400">Today</span>}
+      </div>
+
+      {/* ── STATS ROW ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Present", value: overviewStats.present },
@@ -314,6 +258,65 @@ export default function DailyRoster() {
         ))}
       </div>
 
+      {/* ── SEARCH + FILTER BAR ─────────────────────────────────────── */}
+      <div className={`grid gap-3 md:items-center ${canFilterDepartment ? "md:grid-cols-[minmax(0,1fr)_190px_190px_190px]" : "md:grid-cols-[minmax(0,1fr)_190px_190px]"}`}>
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <input
+            type="text"
+            placeholder="Quick search name or code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-2xl bg-white py-3.5 pl-11 pr-4 text-sm font-medium text-gray-900 placeholder-gray-400 shadow-sm outline-none ring-1 ring-gray-200 focus:ring-indigo-500/50 dark:bg-gray-900 dark:text-white dark:placeholder-slate-500 dark:ring-gray-800"
+          />
+        </div>
+        <div className="flex items-center gap-2 md:hidden">
+          <MobileFilterButton
+            onClick={() => setFiltersOpen(true)}
+            activeCount={(selectedShiftId !== "ALL" ? 1 : 0) + (selectedStatus !== "ALL" ? 1 : 0) + (selectedDepartmentId !== "ALL" ? 1 : 0)}
+          />
+        </div>
+        {canFilterDepartment && (
+          <div className="hidden md:block [&_select]:!rounded-2xl [&_select]:!border-gray-200 [&_select]:!bg-gray-50 [&_select]:!text-gray-900 [&_select]:!shadow-none [&_select]:focus:!border-indigo-400 [&_svg]:!text-gray-400 dark:[&_select]:!border-white/10 dark:[&_select]:!bg-white/10 dark:[&_select]:!text-white dark:[&_svg]:!text-white/50">
+            <SelectField
+              compact
+              value={selectedDepartmentId === "ALL" ? "" : String(selectedDepartmentId)}
+              onChange={(v) => {
+                setSelectedDepartmentId(v === "" ? "ALL" : Number(v));
+                setCurrentPage(0);
+              }}
+              placeholder="All Departments"
+              options={departments.map((d: any) => ({ label: d.name, value: String(d.id) }))}
+            />
+          </div>
+        )}
+        <div className="hidden md:block [&_select]:!rounded-2xl [&_select]:!border-gray-200 [&_select]:!bg-gray-50 [&_select]:!text-gray-900 [&_select]:!shadow-none [&_select]:focus:!border-indigo-400 [&_svg]:!text-gray-400 dark:[&_select]:!border-white/10 dark:[&_select]:!bg-white/10 dark:[&_select]:!text-white dark:[&_svg]:!text-white/50">
+          <SelectField
+            compact
+            value={selectedShiftId === "ALL" ? "" : String(selectedShiftId)}
+            onChange={(v) => {
+              setSelectedShiftId(v === "" ? "ALL" : Number(v));
+              setCurrentPage(0);
+            }}
+            placeholder="All Shifts"
+            options={shifts.map((s) => ({ label: s.shiftName, value: String(s.id) }))}
+          />
+        </div>
+        <div className="hidden md:block [&_select]:!rounded-2xl [&_select]:!border-gray-200 [&_select]:!bg-gray-50 [&_select]:!text-gray-900 [&_select]:!shadow-none [&_select]:focus:!border-indigo-400 [&_svg]:!text-gray-400 dark:[&_select]:!border-white/10 dark:[&_select]:!bg-white/10 dark:[&_select]:!text-white dark:[&_svg]:!text-white/50">
+          <SelectField
+            compact
+            value={selectedStatus === "ALL" ? "" : selectedStatus}
+            onChange={(v) => {
+              setSelectedStatus(v || "ALL");
+              setCurrentPage(0);
+            }}
+            placeholder="All Statuses"
+            options={statusOptions.filter((o) => o.value !== "ALL")}
+          />
+        </div>
+      </div>
+
+      {/* ── DATA AREA ───────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-gray-100 bg-white p-2 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:rounded-[2.5rem]">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-32">
