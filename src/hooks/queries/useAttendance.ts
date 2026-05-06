@@ -93,6 +93,10 @@ function invalidateAttendanceEcosystem(employeeCode: string) {
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.dashboardStats(employeeCode) });
   // Unified Inbox invalidation
   queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
+  // Pending corrections queue (manager sidebar badge)
+  queryClient.invalidateQueries({ queryKey: queryKeys.attendance.pendingCorrections() });
+  // Cross-domain: admin employee request views in EmployeeEdit
+  queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'requests'] });
 }
 
 // ── Punch Mutations ──────────────────────────────────────────────

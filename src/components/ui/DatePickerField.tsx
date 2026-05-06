@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 
 const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -96,10 +96,19 @@ export function DatePickerField({ label, value, onChange, required, align = "lef
       )}
       <button
         type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={value ? `Selected date: ${formattedValue}. Press Enter to change.` : "Select a date"}
         onClick={() => {
           setPickerMonth(getMonthFromValue(value));
           setYearMonthPicker(false);
           setOpen((c) => !c);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && open) {
+            e.preventDefault();
+            setOpen(false);
+          }
         }}
         className="flex h-12 w-full items-center justify-between gap-2.5 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800 shadow-sm transition-all hover:border-gray-300 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-gray-700"
       >
@@ -122,7 +131,18 @@ export function DatePickerField({ label, value, onChange, required, align = "lef
       )}
 
       {open && (
-        <div className={`absolute ${align === "right" ? "right-0" : "left-0"} top-full z-[70] mt-2 w-[300px] overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-200`}>
+        <div
+          role="dialog"
+          aria-label="Date picker calendar"
+          aria-modal="true"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setOpen(false);
+              containerRef.current?.querySelector("button")?.focus();
+            }
+          }}
+          className={`absolute ${align === "right" ? "right-0" : "left-0"} top-full z-[70] mt-2 w-[300px] overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-200`}>
           {/* ── Header with year arrows + clickable month/year ── */}
           <div className="flex items-center justify-between border-b border-gray-100 px-3 py-3 dark:border-gray-800">
             <button

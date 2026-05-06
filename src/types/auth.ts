@@ -5,6 +5,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
   tokenType: string;
   expiresInMs: number;
   employeeCode: string;
@@ -16,6 +17,7 @@ export type EmployeeRole = "EMPLOYEE" | "DEPARTMENT_MANAGER" | "HR_ADMIN" | "SUP
 
 export interface AuthUser {
   accessToken: string;
+  refreshToken: string;
   employeeCode: string;
   fullName: string;
   role: EmployeeRole;

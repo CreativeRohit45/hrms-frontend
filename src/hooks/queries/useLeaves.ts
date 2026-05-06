@@ -108,6 +108,10 @@ function invalidateLeaveEcosystem() {
   // Attendance calendars may show "ON_LEAVE" badges
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
   queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
+  // Admin-level caches: EmployeeEdit -> Leaves tab, balance overrides, audit trails
+  queryClient.invalidateQueries({ queryKey: ['leaves', 'admin'] });
+  // All employee-specific balance caches (hierarchical key match)
+  queryClient.invalidateQueries({ queryKey: ['leaves', 'employeeBalances'] });
 }
 
 // ── Mutations ────────────────────────────────────────────────────
