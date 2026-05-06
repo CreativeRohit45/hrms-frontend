@@ -17,18 +17,30 @@ import type { AttendanceLogResponse } from '../../types/attendance';
 
 // ── Queries ──────────────────────────────────────────────────────
 
-export function useMyAttendanceLogs() {
+export function useMyAttendanceLogs(month?: string) {
   return useQuery<AttendanceLogResponse[]>({
-    queryKey: queryKeys.attendance.myLogs('me'),
-    queryFn: () => getMyAttendanceLogs(),
+    queryKey: month ? [...queryKeys.attendance.myLogs('me'), month] : queryKeys.attendance.myLogs('me'),
+    queryFn: () => {
+      if (month) {
+        const [year, mo] = month.split('-').map(Number);
+        const startDate = `${year}-${String(mo).padStart(2, '0')}-01`;
+        const endDate = `${year}-${String(mo).padStart(2, '0')}-${new Date(year, mo, 0).getDate()}`;
+        return getMyAttendanceLogs(undefined, startDate, endDate);
+      }
+      return getMyAttendanceLogs();
+    },
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useEmployeeLogs(employeeCode: string, enabled: boolean) {
+export function useEmployeeLogs(employeeCode: string, enabled: boolean, month?: string) {
   return useQuery<AttendanceLogResponse[]>({
-    queryKey: queryKeys.attendance.employeeLogs(employeeCode),
-    queryFn: () => getEmployeeLogs(employeeCode),
+    queryKey: month ? [...queryKeys.attendance.employeeLogs(employeeCode), month] : queryKeys.attendance.employeeLogs(employeeCode),
+    queryFn: () => {
+      return getEmployeeLogs(employeeCode);
+    },
     enabled: enabled && employeeCode !== 'me',
+    placeholderData: keepPreviousData,
   });
 }
 

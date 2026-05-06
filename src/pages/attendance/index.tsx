@@ -352,7 +352,7 @@ export default function AttendancePage() {
   // ── UI-only state (preserved) ──────────────────────────────────
   const [activeEmployeeCode, setActiveEmployeeCode] = useState<string>("me");
   const [searchInput, setSearchInput] = useState<string>("");
-  const { data: employeePage } = useAllEmployees(0, 1000, undefined);
+  const { data: employeePage } = useAllEmployees(0, 1000, undefined, isManager);
   const employeeList = employeePage?.content ?? [] as EmployeeResponse[];
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -383,12 +383,13 @@ export default function AttendancePage() {
   // ═══════════════════════════════════════════════════════════════
 
   // 1. My attendance logs (when viewing own records)
-  const myLogsQuery = useMyAttendanceLogs();
+  const myLogsQuery = useMyAttendanceLogs(filterMonth);
 
   // 2. Employee logs (when manager views another employee)
   const employeeLogsQuery = useEmployeeLogs(
     activeEmployeeCode,
     activeEmployeeCode !== "me",
+    filterMonth
   );
 
 

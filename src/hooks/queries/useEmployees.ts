@@ -22,10 +22,11 @@ import type { PageResponse } from '../../types/common';
 
 // ── Queries ──────────────────────────────────────────────────────
 
-export function useAllEmployees(page = 0, size = 50, deptId?: number) {
+export function useAllEmployees(page = 0, size = 50, deptId?: number, enabled = true) {
   return useQuery<PageResponse<EmployeeResponse>>({
     queryKey: [...queryKeys.employees.all(), page, size, deptId],
     queryFn: () => getEmployees(page, size, deptId),
+    enabled,
   });
 }
 
