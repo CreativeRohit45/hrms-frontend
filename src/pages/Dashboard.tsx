@@ -12,6 +12,7 @@ import {
   CalendarDays,
   X,
   Plus,
+  Check,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -294,13 +295,15 @@ export default function Dashboard() {
 
             <button
               onClick={handlePunch}
-              disabled={punchLoading}
+              disabled={punchLoading || stats.todayCompleted}
               className={`
                 group relative flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50
-                ${isActive ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20'}
+                ${stats.todayCompleted ? 'bg-emerald-500/50 cursor-not-allowed' : isActive ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20'}
               `}
             >
-              {punchLoading ? "Updating..." : isActive ? (
+              {punchLoading ? "Updating..." : stats.todayCompleted ? (
+                <><Check className="h-4 w-4" /> Workday Complete</>
+              ) : isActive ? (
                 <><X className="h-4 w-4" /> Punch Out</>
               ) : (
                 <><Plus className="h-4 w-4" /> Punch In</>
