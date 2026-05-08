@@ -68,6 +68,7 @@ export interface CompanyLocation {
   latitude: number;
   longitude: number;
   allowedRadiusMeters: number;
+  enforceGeofence: boolean;
   weekendDays: string;  // "Saturday,Sunday"
   active: boolean;
 }

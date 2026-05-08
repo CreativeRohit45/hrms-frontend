@@ -27,31 +27,42 @@ function toDateString(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
-function AttendanceBadge({ status }: { status: string }) {
+function AttendanceBadge({ status, isLate }: { status: string; isLate?: boolean }) {
   const map: Record<string, { label: string; cls: string }> = {
     PRESENT: { label: "Present", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800/60" },
-    LATE: { label: "Late", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60" },
     ABSENT: { label: "Absent", cls: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800/60" },
     ON_LEAVE: { label: "On Leave", cls: "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-800/60" },
+    HALF_DAY: { label: "Half Day", cls: "bg-orange-50 text-orange-700 ring-1 ring-orange-200/60 dark:bg-orange-950/40 dark:text-orange-300 dark:ring-orange-800/60" },
+    WEEKEND_WORK: { label: "Weekend Work", cls: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-800/60" },
+    HOLIDAY_WORK: { label: "Holiday Work", cls: "bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200/60 dark:bg-fuchsia-950/40 dark:text-fuchsia-300 dark:ring-fuchsia-800/60" },
   };
   const cfg = map[status] ?? {
     label: status?.replaceAll("_", " ") ?? "Unknown",
     cls: "bg-gray-100 text-gray-600 ring-1 ring-gray-200/60 dark:bg-gray-800 dark:text-gray-300",
   };
-  return <span className={`inline-flex items-center rounded-xl px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${cfg.cls}`}>{cfg.label}</span>;
+  return (
+    <div className="flex flex-col items-start gap-1 shrink-0">
+      {isLate && (
+        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase sm:normal-case tracking-wide sm:tracking-normal bg-amber-50 text-amber-700 ring-1 ring-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60">
+          Late
+        </span>
+      )}
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase sm:normal-case tracking-wide sm:tracking-normal ${cfg.cls}`}>
+        {cfg.label}
+      </span>
+    </div>
+  );
 }
 
 function RosterCard({ item }: { item: any }) {
   const initials = getInitials(item.fullName);
   const avatarColor: Record<string, string> = {
     PRESENT: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
-    LATE: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
     ABSENT: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300",
     ON_LEAVE: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
   };
   const stripColor: Record<string, string> = {
     PRESENT: "bg-emerald-500",
-    LATE: "bg-amber-400",
     ABSENT: "bg-rose-500",
     ON_LEAVE: "bg-blue-500",
   };
@@ -59,8 +70,8 @@ function RosterCard({ item }: { item: any }) {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-150 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
       <div className={`absolute bottom-0 left-0 top-0 w-1 ${stripColor[item.attendanceStatus] ?? "bg-gray-300"}`} />
-      <div className="flex flex-col gap-3.5 p-5 pl-6">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3.5 p-4 sm:p-5 sm:pl-6">
+        <div className="flex items-start sm:items-center gap-3">
           <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${avatarColor[item.attendanceStatus] ?? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
             {initials}
           </div>
@@ -68,7 +79,7 @@ function RosterCard({ item }: { item: any }) {
             <p className="truncate text-sm font-black text-gray-900 dark:text-white">{item.fullName}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400/70">{item.employeeCode}</p>
           </div>
-          <AttendanceBadge status={item.attendanceStatus} />
+          <AttendanceBadge status={item.attendanceStatus} isLate={item.late} />
         </div>
         <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/40">
           <Clock className="h-4 w-4 shrink-0 text-gray-400" />
@@ -128,8 +139,8 @@ export default function DailyRoster() {
 
   const overviewStats = useMemo(
     () => ({
-      present: roster.filter((r) => r.attendanceStatus === "PRESENT").length,
-      late: roster.filter((r) => r.attendanceStatus === "LATE").length,
+      present: roster.filter((r) => r.attendanceStatus === "PRESENT" || r.attendanceStatus === "HALF_DAY" || r.attendanceStatus === "WEEKEND_WORK" || r.attendanceStatus === "HOLIDAY_WORK").length,
+      late: roster.filter((r) => r.late).length,
       leave: roster.filter((r) => r.attendanceStatus === "ON_LEAVE").length,
       absent: roster.filter((r) => r.attendanceStatus === "ABSENT").length,
     }),
@@ -147,9 +158,9 @@ export default function DailyRoster() {
   const statusOptions = [
     { label: "All Statuses", value: "ALL" },
     { label: "Present", value: "PRESENT" },
+    { label: "Late", value: "LATE" },
     { label: "Absent", value: "ABSENT" },
     { label: "Half Day", value: "HALF_DAY" },
-    { label: "Late", value: "LATE" },
     { label: "On Leave", value: "ON_LEAVE" },
     { label: "Holiday", value: "HOLIDAY" },
     { label: "Weekend Work", value: "WEEKEND_WORK" },
@@ -237,10 +248,10 @@ export default function DailyRoster() {
         <div className="min-w-0 flex-1 [&_button]:!rounded-2xl [&_button]:!border-gray-200 [&_button]:!shadow-sm [&_button]:!font-bold dark:[&_button]:!border-gray-800 dark:[&_button]:!bg-gray-900 [&_label]:!hidden">
           <DatePickerField value={selectedDateStr} onChange={(v) => { setSelectedDateStr(v); setCurrentPage(0); }} />
         </div>
+        {isToday && <span className="rounded-lg bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-600 shrink-0 dark:bg-emerald-950/30 dark:text-emerald-400">Today</span>}
         <button onClick={() => shiftDate(1)} disabled={isToday} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-all hover:bg-gray-50 disabled:opacity-30 active:scale-95 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800">
           <ChevronRight className="h-5 w-5" />
         </button>
-        {isToday && <span className="hidden rounded-lg bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-600 sm:inline dark:bg-emerald-950/30 dark:text-emerald-400">Today</span>}
       </div>
 
       {/* ── STATS ROW ───────────────────────────────────────────────── */}
@@ -358,7 +369,7 @@ export default function DailyRoster() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4"><AttendanceBadge status={item.attendanceStatus} /></td>
+                      <td className="px-6 py-4"><AttendanceBadge status={item.attendanceStatus} isLate={item.late} /></td>
                       <td className="px-6 py-4 text-sm font-black tabular-nums text-gray-700 dark:text-gray-300">
                         {formatTime(item.punchInTime)} <span className="mx-1 text-gray-300">→</span> {formatTime(item.punchOutTime)}
                       </td>

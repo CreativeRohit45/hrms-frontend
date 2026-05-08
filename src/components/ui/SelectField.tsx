@@ -42,12 +42,12 @@ export function SelectField({
           }`}
         >
           {placeholder && (
-            <option value="">
+            <option value="" className="dark:bg-gray-950 dark:text-gray-200">
               {placeholder}
             </option>
           )}
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="dark:bg-gray-900">
+            <option key={opt.value} value={opt.value} className="dark:bg-gray-950 dark:text-gray-200">
               {opt.label}
             </option>
           ))}

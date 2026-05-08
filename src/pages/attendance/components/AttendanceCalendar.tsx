@@ -82,17 +82,23 @@ export function AttendanceCalendar({
               </div>
               <div className="mt-auto pt-2 flex flex-wrap items-center justify-between gap-1">
                 {dayStatus ? (
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold rounded px-1.5 py-0.5 truncate ${dayStatus.badge}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dayStatus.dot}`} />
-                    <span className="truncate">{dayStatus.label}</span>
-                  </span>
+                  <div className="flex flex-col items-start gap-1">
+                    {log?.late && (
+                      <span className="inline-flex items-center text-[9px] font-black uppercase sm:normal-case tracking-widest sm:tracking-normal bg-amber-50 text-amber-700 ring-1 ring-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60 rounded-full px-2 py-0.5">
+                        Late
+                      </span>
+                    )}
+                    <span className={`inline-flex items-center text-[10px] font-bold rounded-full px-2 py-0.5 truncate ${dayStatus.badge}`}>
+                      <span className="truncate">{dayStatus.label}</span>
+                    </span>
+                  </div>
                 ) : (
                   <span className="text-[10px] text-gray-400 dark:text-gray-600 font-medium pl-1">
                     {isFuture ? "—" : "No record"}
                   </span>
                 )}
                 {log && (log.punchInTime || log.calculatedPayableMinutes !== null) && (
-                  <div className="pr-1">
+                  <div className="pr-1 flex items-center gap-1.5">
                     {log.punchInTime && !log.punchOutTime ? (
                       <span className="text-[10px] font-medium text-amber-500 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" /> Active

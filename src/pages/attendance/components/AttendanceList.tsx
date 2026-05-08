@@ -119,9 +119,13 @@ export function AttendanceList({
         cell: (log) => {
           const sc = STATUS_CONFIG[log.attendanceStatus];
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-start gap-1">
+              {log.late && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                  Late
+                </span>
+              )}
               <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-2 py-0.5 ${sc.badge}`}>
-                <span className={`w-1 h-1 rounded-full flex-shrink-0 ${sc.dot}`} />
                 {sc.label}
                 {log.correctionStatus === "APPROVED" && (
                   <span className="ml-0.5 text-emerald-500" title="Regularized Attendance">
@@ -189,7 +193,12 @@ export function AttendanceList({
       cols.push({
         header: "",
         cell: (log) => {
-          const canRequestCorrection = log.correctionStatus !== "PENDING" && (log.correctionStatus === "NONE" || log.correctionStatus === "REJECTED");
+          const isCompleted = !!log.punchOutTime;
+          const isPastDay = log.workDate < todayStr;
+
+          const canRequestCorrection = (isPastDay || isCompleted) &&
+            log.correctionStatus !== "PENDING" &&
+            (log.correctionStatus === "NONE" || log.correctionStatus === "REJECTED");
           const isLocked = payrollLockDate && log.workDate <= payrollLockDate;
 
           return (
@@ -327,7 +336,10 @@ export function AttendanceList({
                   {week.logs.map((log) => {
                     const sc = STATUS_CONFIG[log.attendanceStatus];
                     const isToday = log.workDate === todayStr;
-                    const canRequestCorrection =
+                    const isCompleted = !!log.punchOutTime;
+                    const isPastDay = log.workDate < todayStr;
+
+                    const canRequestCorrection = (isPastDay || isCompleted) &&
                       log.correctionStatus !== "PENDING" &&
                       (isManager || log.correctionStatus === "NONE" || log.correctionStatus === "REJECTED");
 
@@ -350,8 +362,12 @@ export function AttendanceList({
                             <p className="text-sm font-bold text-gray-900 dark:text-white">{formatWorkDate(log.workDate)}</p>
                           </div>
                           <div className="flex flex-col items-end gap-2">
+                            {log.late && (
+                              <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest rounded-full px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800">
+                                Late
+                              </span>
+                            )}
                             <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest rounded-full px-2.5 py-1 ${sc.badge}`}>
-                              <span className={`w-1 h-1 rounded-full ${sc.dot}`} />
                               {sc.label}
                             </span>
                             {/* Manager Action Indicators */}
@@ -385,7 +401,11 @@ export function AttendanceList({
                               <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
                                 {log.punchOutTime ? formatTime(log.punchOutTime) : <LiveSessionTimer startTime={log.punchInTime!} />}
                               </p>
-                              {log.punchOutTime && log.locationVerifiedOut !== null && <span className={`w-1 h-1 rounded-full ${log.locationVerifiedOut ? "bg-emerald-400" : "bg-red-400"}`} />}
+                              {log.punchOutTime ? (
+                                log.locationVerifiedOut !== null && <span className={`w-1 h-1 rounded-full ${log.locationVerifiedOut ? "bg-emerald-400" : "bg-red-400"}`} />
+                              ) : (
+                                <span className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
+                              )}
                             </div>
                           </div>
                         </div>

@@ -14,7 +14,6 @@ export const STATUS_CONFIG: Record<
   { label: string; dot: string; badge: string }
 > = {
   PRESENT: { label: "Present", dot: "bg-emerald-500", badge: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800" },
-  LATE: { label: "Late", dot: "bg-amber-500", badge: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800" },
   ABSENT: { label: "Absent", dot: "bg-red-500", badge: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800" },
   HALF_DAY: { label: "Half Day", dot: "bg-orange-400", badge: "bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 shadow-sm" },
   ON_LEAVE: { label: "On Leave", dot: "bg-sky-500", badge: "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border border-sky-100 dark:border-sky-800" },
@@ -62,7 +61,6 @@ export function LiveSessionTimer({ startTime }: { startTime: string }) {
 
   return (
     <span className="text-amber-500 dark:text-amber-400 text-xs font-mono font-bold flex items-center gap-1.5 tracking-tight">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
       {elapsed}
     </span>
   );

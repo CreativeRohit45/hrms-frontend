@@ -480,11 +480,16 @@ export default function AttendancePage() {
       weeksMap.get(weekKey)!.push(log);
     });
     const sortedWeekKeys = Array.from(weeksMap.keys()).sort((a, b) => b.localeCompare(a));
-    return sortedWeekKeys.map((key, index) => {
+    return sortedWeekKeys.map((key) => {
       const weekLogs = weeksMap.get(key)!.sort((a, b) => b.workDate.localeCompare(a.workDate));
+      const weekDate = new Date(key);
+      const firstDayOfMonth = new Date(weekDate.getFullYear(), weekDate.getMonth(), 1);
+      const startDayOfWeek = firstDayOfMonth.getDay();
+      const weekNum = Math.ceil((weekDate.getDate() + startDayOfWeek) / 7);
+
       return {
         id: key,
-        label: `Week ${sortedWeekKeys.length - index}`,
+        label: `Week ${weekNum}`,
         dateRange: `${formatWorkDate(weekLogs[weekLogs.length - 1].workDate)} - ${formatWorkDate(weekLogs[0].workDate)}`,
         logs: weekLogs,
       };
@@ -525,22 +530,9 @@ export default function AttendancePage() {
 
   const stats = useMemo(() => {
     const present = filtered.filter((l) =>
-      ["PRESENT", "LATE", "HALF_DAY", "WEEKEND_WORK", "HOLIDAY_WORK"].includes(l.attendanceStatus)
+      ["PRESENT", "HALF_DAY", "WEEKEND_WORK", "HOLIDAY_WORK"].includes(l.attendanceStatus)
     ).length;
-    const late = filtered.filter((l) => {
-      if (l.attendanceStatus === "LATE") return true;
-      if (l.attendanceStatus === "HALF_DAY" && l.punchInTime && l.shiftStartTime) {
-        try {
-          const datePart = l.workDate;
-          const [sH, sM] = l.shiftStartTime.split(':');
-          const shiftThreshold = new Date(`${datePart}T${sH}:${sM}:00`).getTime() + (10 * 60 * 1000);
-          const punchStr = l.punchInTime.includes('T') ? l.punchInTime : l.punchInTime.replace(' ', 'T');
-          const punchTime = new Date(punchStr).getTime();
-          return !isNaN(punchTime) && punchTime > shiftThreshold;
-        } catch (e) { return false; }
-      }
-      return false;
-    }).length;
+    const late = filtered.filter((l) => l.late).length;
     const totalMin = filtered.reduce((acc, l) => acc + (l.calculatedPayableMinutes ?? 0), 0);
     const overtimeMin = filtered.reduce((acc, l) => acc + (l.overtime ? l.overtimeMinutes : 0), 0);
 
@@ -563,7 +555,7 @@ export default function AttendancePage() {
         if (!isWeekend && !isHoliday && !isToday) {
           const hasValidRecord = filtered.some((l) =>
             l.workDate === dateStr &&
-            ["PRESENT", "LATE", "WEEKEND_WORK", "HOLIDAY_WORK", "ON_LEAVE", "HALF_DAY"].includes(l.attendanceStatus)
+            ["PRESENT", "WEEKEND_WORK", "HOLIDAY_WORK", "ON_LEAVE", "HALF_DAY"].includes(l.attendanceStatus)
           );
           if (!hasValidRecord) absent++;
         }

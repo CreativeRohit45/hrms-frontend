@@ -99,6 +99,25 @@ export default function CompanyTab() {
         </div>
       </div>
 
+      <div className="flex flex-row items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800/60">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Strict Geofence Enforcement</h3>
+          <p className="text-xs text-gray-500 mt-0.5 pr-2">If enabled, punch-in/out from outside the allowed radius will be blocked.</p>
+        </div>
+        <button
+          onClick={() => setForm({ ...form, enforceGeofence: !form.enforceGeofence })}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+            form.enforceGeofence ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              form.enforceGeofence ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
       {/* Weekend Days */}
       <div>
         <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Weekend Days</label>

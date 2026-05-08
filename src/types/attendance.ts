@@ -5,7 +5,6 @@ export type AttendanceStatus =
   | "PRESENT"
   | "ABSENT"
   | "HALF_DAY"
-  | "LATE"
   | "ON_LEAVE"
   | "HOLIDAY"
   | "WEEKEND_WORK"
@@ -27,6 +26,7 @@ export interface AttendanceLogResponse {
   overtime: boolean;
   overtimeMinutes: number;
   attendanceStatus: AttendanceStatus;
+  late: boolean;
   manuallyCorrected: boolean;
   correctionReason: string | null;
   correctionStatus: CorrectionStatus;
