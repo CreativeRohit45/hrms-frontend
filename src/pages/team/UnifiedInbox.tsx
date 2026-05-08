@@ -245,7 +245,7 @@ function RequestDetailBody({ request, impactPreview }: { request: UnifiedRequest
         <div className={`relative flex items-center justify-between overflow-hidden bg-gradient-to-br ${cfg.gradient} p-6 sm:p-8 text-white`}>
           <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-8 -left-8 h-36 w-36 rounded-full bg-black/10 blur-2xl" />
-          
+
           <div className="relative z-10">
             <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/80">Current Status</p>
             <h2 className="text-3xl sm:text-4xl font-black leading-none tracking-tight">{cfg.label}</h2>
@@ -431,15 +431,15 @@ function RequestDetailBody({ request, impactPreview }: { request: UnifiedRequest
           {request.type === "OVERTIME" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               <DetailRow label="Work Date" value={formatDate(request.referenceDate)} />
-              <DetailRow 
-                label="Overtime Duration" 
+              <DetailRow
+                label="Overtime Duration"
                 value={
                   request.overtimeMinutes != null ? (
                     <span className="text-purple-600 dark:text-purple-400 font-black">
                       {Math.floor(request.overtimeMinutes / 60)}h {request.overtimeMinutes % 60}m
                     </span>
                   ) : "Not available"
-                } 
+                }
               />
               <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6 rounded-3xl bg-gray-50 p-6 dark:bg-gray-800/40">
                 <DetailRow
@@ -515,11 +515,13 @@ function RequestCard({
   onAction,
   onOpen,
   isActioning,
+  isAdmin,
 }: {
   req: UnifiedRequest;
   onAction: (req: UnifiedRequest, action: "approve" | "reject" | "revoke") => void;
   onOpen: (req: UnifiedRequest) => void;
   isActioning: boolean;
+  isAdmin: boolean;
 }) {
   const cfg = TYPE_CONFIG[req.type];
   const Icon = cfg.icon;
@@ -597,7 +599,7 @@ function RequestCard({
                 <span>Reject</span>
               </button>
             </>
-          ) : req.status === "APPROVED" && new Date(req.referenceDate + "T00:00:00") >= new Date(new Date().setHours(0,0,0,0)) ? (
+          ) : req.type === "LEAVE" && req.status === "APPROVED" && new Date(req.referenceDate + "T00:00:00") > new Date(new Date().setHours(0, 0, 0, 0)) ? (
             <button
               disabled={isActioning}
               onClick={(e) => {
@@ -677,8 +679,9 @@ export default function UnifiedInbox() {
     request: null,
   });
   const { pushToast } = useAppToast();
-  const canFilterDepartment = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
-  const canOpenLedger = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
+  const canFilterDepartment = isAdmin;
+  const canOpenLedger = isAdmin;
   const { data: departments = [] } = useDepartments(canFilterDepartment);
 
   useEffect(() => {
@@ -788,17 +791,17 @@ export default function UnifiedInbox() {
 
     const rawId = getRequestNumericId(request.id);
     setActioningId(request.id);
-    
+
     // --- Optimistic UI Update ---
     const queryKey = [
-      'attendance', 'inbox', activeTab, 
-      requestType === "ALL" ? undefined : requestType, 
-      canFilterDepartment ? departmentId : undefined, 
+      'attendance', 'inbox', activeTab,
+      requestType === "ALL" ? undefined : requestType,
+      canFilterDepartment ? departmentId : undefined,
       page
     ];
-    
+
     const previousData = queryClient.getQueryData(queryKey);
-    
+
     queryClient.setQueryData(queryKey, (oldData: any) => {
       if (!oldData || !oldData.content) return oldData;
       return {
@@ -941,9 +944,8 @@ export default function UnifiedInbox() {
           <button
             key={key}
             onClick={() => setActiveTab(key as typeof activeTab)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-              activeTab === key ? "bg-white text-indigo-600 shadow dark:bg-gray-800" : "text-gray-500 hover:text-gray-900"
-            }`}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${activeTab === key ? "bg-white text-indigo-600 shadow dark:bg-gray-800" : "text-gray-500 hover:text-gray-900"
+              }`}
           >
             <Icon className="h-4 w-4" />
             <span>{label}</span>
@@ -995,9 +997,16 @@ export default function UnifiedInbox() {
       ) : (
         <div className="space-y-3">
           {visibleRequests.map((req) => (
-            <RequestCard key={req.id} req={req} onAction={handleAction} onOpen={setSelectedRequest} isActioning={actioningId === req.id} />
+            <RequestCard
+              key={req.id}
+              req={req}
+              onAction={handleAction}
+              onOpen={setSelectedRequest}
+              isActioning={actioningId === req.id}
+              isAdmin={isAdmin}
+            />
           ))}
-          
+
           {/* ── Pagination Controls ─────────────────────────────── */}
           {data?.totalPages && data.totalPages > 1 && (
             <div className="mt-8 flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">

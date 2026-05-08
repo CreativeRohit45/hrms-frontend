@@ -6,6 +6,7 @@ export interface LeaveTypeDTO {
   id: number;
   name: string;
   code: string;
+  unit: "DAYS" | "HOURS";
   paid: boolean;
   requiresAttachment: boolean;
   attachmentThresholdDays: number;
@@ -24,6 +25,7 @@ export interface LeaveBalanceResponse {
   leaveTypeId: number;
   leaveTypeName: string;
   leaveTypeCode: string;
+  unit: "DAYS" | "HOURS";
   allocated: number;
   used: number;
   balance: number;
@@ -79,6 +81,7 @@ export interface LeaveApplyRequest {
   halfDay: boolean;
   halfDaySession?: string;
   attachmentUrl?: string;
+  appliedHours?: number;
 }
 
 export interface LeaveActionRequest {

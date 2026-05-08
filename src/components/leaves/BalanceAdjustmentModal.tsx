@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { AppModal } from "../ui/AppModal";
 import { SelectField } from "../ui/SelectField";
@@ -21,6 +21,16 @@ export function BalanceAdjustmentModal({
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [showAccrualConfirm, setShowAccrualConfirm] = useState(false);
+
+  const selectedBalance = balances.find((b) => b.leaveTypeId === leaveTypeId);
+  const isHours = selectedBalance?.unit === "HOURS";
+
+  // Sync leaveTypeId when balances arrive
+  useEffect(() => {
+    if (balances.length > 0 && leaveTypeId === 0) {
+      setLeaveTypeId(balances[0].leaveTypeId);
+    }
+  }, [balances, leaveTypeId]);
 
   const grantMutation = useGrantLeave();
   const overrideMutation = useOverrideBalance();
@@ -80,14 +90,16 @@ export function BalanceAdjustmentModal({
 
             <div>
               <label className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-                {mode === "GRANT" ? "Adjustment Amount (Days)" : "New Balance Value (Days)"}
+                {mode === "GRANT" 
+                  ? `Adjustment Amount (${isHours ? "Hours" : "Days"})` 
+                  : `New Balance Value (${isHours ? "Hours" : "Days"})`}
               </label>
               <input
                 type="number"
                 step="0.1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={mode === "GRANT" ? "e.g. 1.5 or -1.0" : "e.g. 15.0"}
+                placeholder={mode === "GRANT" ? (isHours ? "e.g. 2.5 or -1.0" : "e.g. 1.5 or -1.0") : (isHours ? "e.g. 8.0" : "e.g. 15.0")}
                 className="h-12 w-full rounded-xl border border-gray-100 bg-gray-50 px-4 text-sm font-mono font-black dark:border-gray-800 dark:bg-gray-900"
               />
             </div>

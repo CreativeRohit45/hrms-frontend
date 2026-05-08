@@ -6,6 +6,7 @@ import { useCancelLeave, useRevokeLeave } from "../../hooks/queries/useLeaves";
 import { useCancelGatepass } from "../../hooks/queries/useGatepasses";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { fmt, fmtTime } from "./utils";
+import { useAuth } from "../../context/AuthContext";
 import type { Request } from "./RequestTypes";
 
 const statusConfig: Record<
@@ -72,6 +73,7 @@ export function RequestDetailsModal({
   request: Request;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
   const { pushToast } = useAppToast();
   const revokeMutation = useRevokeLeave();
   const cancelLeaveMutation = useCancelLeave();
@@ -82,17 +84,30 @@ export function RequestDetailsModal({
   const isLeave = request.type === "LEAVE";
   const cfg = statusConfig[request.status] ?? statusConfig["PENDING"];
   const m = request.metadata ?? {};
+  
+  // Role checks
+  const isAdmin = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
+  const isManager = user?.role === "DEPARTMENT_MANAGER";
+  const isOwner = user?.employeeCode === (request.metadata?.employeeCode || request.metadata?.employee?.employeeCode);
+  const isPrivileged = isAdmin || (isManager && !isOwner);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const leaveStart = m.startDate ? new Date(`${m.startDate}T00:00:00`) : null;
   const gatepassOut = m.requestedOutTime ? new Date(m.requestedOutTime) : null;
+  
   const leaveIsFuture = !!leaveStart && leaveStart.getTime() > today.getTime();
   const gatepassIsFuture = !!gatepassOut && gatepassOut.getTime() > Date.now();
+  
   const canCancelLeave = isLeave && request.status === "PENDING" && leaveIsFuture;
+  
+  // Admins and Managers can revoke even if it started. Owners can only revoke future leaves.
   const canRevokeLeave = isLeave && request.status === "APPROVED" && leaveIsFuture;
+  
   const canCancelGatepass = !isLeave && (request.status === "PENDING" || request.status === "APPROVED") && gatepassIsFuture && !m.actualOutTime;
+  
   const isLockedByTime =
-    (isLeave && (request.status === "PENDING" || request.status === "APPROVED") && !leaveIsFuture) ||
+    (isLeave && (request.status === "PENDING" || request.status === "APPROVED") && !leaveIsFuture && !isPrivileged) ||
     (!isLeave && (request.status === "PENDING" || request.status === "APPROVED") && (!gatepassIsFuture || !!m.actualOutTime));
 
   const handleRevoke = async () => {

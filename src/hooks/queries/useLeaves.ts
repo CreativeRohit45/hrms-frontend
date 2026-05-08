@@ -301,7 +301,7 @@ export function useLeavePreview(request: LeaveApplyRequest | null) {
     }, 400); // Architect's requested debounce range (300ms-500ms)
 
     return () => clearTimeout(handler);
-  }, [request?.startDate, request?.endDate, request?.leaveTypeId, request?.halfDay, request?.halfDaySession]);
+  }, [request?.startDate, request?.endDate, request?.leaveTypeId, request?.halfDay, request?.halfDaySession, request?.appliedHours]);
 
   return useQuery<LeavePreviewResponse>({
     queryKey: ['leaves', 'preview', debouncedRequest],

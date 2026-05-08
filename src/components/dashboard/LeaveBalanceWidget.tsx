@@ -15,9 +15,15 @@ export function LeaveBalanceWidget() {
   } = useMyAuditTrail();
   const audits = useMemo(() => auditsData?.pages.flatMap((p: any) => p.content) || [], [auditsData]);
 
+  // Filter to show only primary leave types on the dashboard
+  const primaryBalances = useMemo(() => {
+    const primaryCodes = ["CL", "SL", "EL", "CMP"];
+    return balances.filter((b: any) => primaryCodes.includes(b.leaveTypeCode));
+  }, [balances]);
+
   if (isBalancesLoading) {
     return (
-      <div className="grid h-64 grid-cols-2 gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800/60 dark:bg-gray-900">
+      <div className="grid h-64 grid-cols-1 gap-4 sm:grid-cols-2 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800/60 dark:bg-gray-900">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="animate-pulse space-y-2">
             <div className="h-3 w-12 rounded bg-gray-100 dark:bg-gray-800" />
@@ -28,7 +34,7 @@ export function LeaveBalanceWidget() {
     );
   }
 
-  if (!balances || balances.length === 0) {
+  if (!primaryBalances || primaryBalances.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-gray-200 bg-gray-50/50 p-6 text-center dark:border-gray-800 dark:bg-gray-900/50">
         <Palmtree className="mb-2 h-8 w-8 text-gray-300" />
@@ -66,9 +72,10 @@ export function LeaveBalanceWidget() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {balances.map((b: any) => {
+        {primaryBalances.map((b: any) => {
           const total = (b.balance || 0) + (b.used || 0);
           const percentage = total > 0 ? Math.round(((b.balance || 0) / total) * 100) : 0;
+          const unit = b.unit === "HOURS" ? "h" : "d";
           
           return (
             <div 
@@ -82,14 +89,14 @@ export function LeaveBalanceWidget() {
                   </span>
                   <span className="text-lg font-black text-gray-900 dark:text-white">
                     {b.balance}
-                    <span className="ml-0.5 text-[10px] text-gray-400">d</span>
+                    <span className="ml-0.5 text-[10px] text-gray-400">{unit}</span>
                   </span>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                    <span>Used: {b.used}d</span>
-                    <span>Total: {total}d</span>
+                    <span>Used: {b.used}{unit}</span>
+                    <span>Total: {total}{unit}</span>
                   </div>
                   <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                     <div 

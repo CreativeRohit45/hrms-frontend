@@ -11,6 +11,11 @@ const TONE_STYLES = {
   info: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300",
 };
 
+function formatLabel(label: string) {
+  if (!label) return "";
+  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+}
+
 export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${TONE_STYLES[tone]}`}>

@@ -181,18 +181,25 @@ export default function Profile() {
                   <p className="text-sm font-bold text-gray-900 dark:text-white">Leave balances</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{new Date().getFullYear()} summary</p>
                 </div>
-                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{totalRemaining} / {totalAllocated} remaining</p>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  {balances.reduce((s, b) => s + b.balance, 0)} / {balances.reduce((s, b) => s + b.allocated, 0)} remaining
+                </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {balances.map((balance) => (
-                  <div key={balance.leaveTypeCode} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{balance.leaveTypeCode}</span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">{balance.balance}/{balance.allocated}</span>
+                {balances.map((balance) => {
+                  const unit = balance.unit === "HOURS" ? "h" : "d";
+                  return (
+                    <div key={balance.leaveTypeCode} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{balance.leaveTypeCode}</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">
+                          {balance.balance}{unit} / {balance.allocated}{unit}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{balance.leaveTypeName}</p>
                     </div>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{balance.leaveTypeName}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>

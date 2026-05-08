@@ -18,13 +18,10 @@ import {
   ShieldCheck,
   Copy
 } from "lucide-react";
-import type { LeaveBalanceResponse } from "../../types/leave";
-import { useGrantLeave, useOverrideBalance, useRunAccrual } from "../../hooks/queries/useLeaves";
 import { useEmployeeBalances, useEmployeeAuditTrail, useEmployeeLeaveRequests } from "../../hooks/queries/useLeaves";
 import { useEmployeeById, useUpdateEmployee } from "../../hooks/queries/useEmployees";
 import { useDepartments, useShifts, useCompanyLocation } from "../../hooks/queries/useSettings";
-import { AppModal } from "../../components/ui/AppModal";
-import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { BalanceAdjustmentModal } from "../../components/leaves/BalanceAdjustmentModal";
 
 export default function EmployeeEdit({
   employeeId,
@@ -350,27 +347,30 @@ export default function EmployeeEdit({
 
           {/* Balances Display Grid */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-            {balances.map(b => (
-              <div key={b.leaveTypeCode} className="card p-4 bg-gradient-to-br from-white to-gray-50/50 transition-transform hover:scale-[1.02] dark:from-gray-900 dark:to-gray-800/50 sm:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[10px] font-black tracking-widest text-gray-400 uppercase">{b.leaveTypeCode}</span>
-                  <Palmtree size={14} className="text-indigo-500/50" />
+            {balances.map(b => {
+              const unit = b.unit === "HOURS" ? "h" : "d";
+              return (
+                <div key={b.leaveTypeCode} className="card p-4 bg-gradient-to-br from-white to-gray-50/50 transition-transform hover:scale-[1.02] dark:from-gray-900 dark:to-gray-800/50 sm:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[10px] font-black tracking-widest text-gray-400 uppercase">{b.leaveTypeCode}</span>
+                    <Palmtree size={14} className="text-indigo-500/50" />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{b.balance}{unit}</span>
+                    <span className="text-xs text-gray-400 font-bold tracking-tight">/ {b.allocated}{unit}</span>
+                  </div>
+                  <div className="mt-4 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                          style={{ width: `${b.allocated > 0 ? (Math.min(b.used, b.allocated) / b.allocated) * 100 : 0}%` }} 
+                        />
+                    </div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase">{Math.round((b.used/b.allocated || 0) * 100)}%</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{b.balance}</span>
-                  <span className="text-xs text-gray-400 font-bold tracking-tight">/ {b.allocated}d</span>
-                </div>
-                <div className="mt-4 flex items-center gap-2">
-                   <div className="h-1.5 flex-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
-                        style={{ width: `${b.allocated > 0 ? (Math.min(b.used, b.allocated) / b.allocated) * 100 : 0}%` }} 
-                      />
-                   </div>
-                   <span className="text-[9px] font-black text-gray-400 uppercase">{Math.round((b.used/b.allocated || 0) * 100)}%</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Transaction Ledger Table */}
@@ -397,43 +397,46 @@ export default function EmployeeEdit({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {audits.map(a => (
-                    <tr key={a.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
-                            a.amount > 0 ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600" : "bg-rose-100 dark:bg-rose-950/40 text-rose-600"
-                          }`}>
-                            {a.amount > 0 ? <ArrowDownCircle size={18} /> : <ArrowUpCircle size={18} />}
-                          </div>
-                          <div>
-                            <p className="font-black tracking-tight text-gray-900 dark:text-white uppercase text-[10px]">{a.transactionType}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                              <span className="text-[9px] font-black uppercase text-indigo-500 tracking-tighter">{a.leaveTypeCode}</span>
+                  {audits.map(a => {
+                    const unit = a.leaveTypeCode === "CMP" ? "h" : "d";
+                    return (
+                      <tr key={a.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                              a.amount > 0 ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600" : "bg-rose-100 dark:bg-rose-950/40 text-rose-600"
+                            }`}>
+                              {a.amount > 0 ? <ArrowDownCircle size={18} /> : <ArrowUpCircle size={18} />}
+                            </div>
+                            <div>
+                              <p className="font-black tracking-tight text-gray-900 dark:text-white uppercase text-[10px]">{a.transactionType}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                <span className="text-[9px] font-black uppercase text-indigo-500 tracking-tighter">{a.leaveTypeCode}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="text-gray-600 dark:text-gray-400 font-medium italic max-w-[240px] truncate leading-relaxed">
-                          {a.reason || "System adjusted"}
-                        </p>
-                      </td>
-                      <td className={`px-6 py-5 text-center font-black tabular-nums text-sm ${a.amount > 0 ? "text-emerald-600" : "text-rose-500"}`}>
-                        {a.amount > 0 ? "+" : ""}{a.amount.toFixed(1)}
-                      </td>
-                      <td className="px-6 py-5 text-center font-bold text-gray-400 tabular-nums">
-                        {a.balanceAfter.toFixed(1)}
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="flex flex-col">
-                          <span className="font-mono text-gray-900 dark:text-white text-[10px]">{new Date(a.createdAt).toLocaleDateString()}</span>
-                          <span className="text-[9px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">{new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-5">
+                          <p className="text-gray-600 dark:text-gray-400 font-medium italic max-w-[240px] truncate leading-relaxed">
+                            {a.reason || "System adjusted"}
+                          </p>
+                        </td>
+                        <td className={`px-6 py-5 text-center font-black tabular-nums text-sm ${a.amount > 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                          {a.amount > 0 ? "+" : ""}{a.amount.toFixed(1)}{unit}
+                        </td>
+                        <td className="px-6 py-5 text-center font-bold text-gray-400 tabular-nums">
+                          {a.balanceAfter.toFixed(1)}{unit}
+                        </td>
+                        <td className="px-8 py-5">
+                          <div className="flex flex-col">
+                            <span className="font-mono text-gray-900 dark:text-white text-[10px]">{new Date(a.createdAt).toLocaleDateString()}</span>
+                            <span className="text-[9px] text-gray-400 font-bold mt-0.5 uppercase tracking-tighter">{new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {!loadingLeaves && audits.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-20 text-center">
@@ -448,24 +451,27 @@ export default function EmployeeEdit({
               </table>
             </div>
             <div className="space-y-3 p-4 md:hidden">
-              {audits.map((a) => (
-                <div key={a.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase text-gray-900 dark:text-white">{a.transactionType}</p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-500">{a.leaveTypeCode}</p>
+              {audits.map((a) => {
+                const unit = a.leaveTypeCode === "CMP" ? "h" : "d";
+                return (
+                  <div key={a.id} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black uppercase text-gray-900 dark:text-white">{a.transactionType}</p>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-500">{a.leaveTypeCode}</p>
+                      </div>
+                      <p className={`text-sm font-black tabular-nums ${a.amount > 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                        {a.amount > 0 ? "+" : ""}{a.amount.toFixed(1)}{unit}
+                      </p>
                     </div>
-                    <p className={`text-sm font-black tabular-nums ${a.amount > 0 ? "text-emerald-600" : "text-rose-500"}`}>
-                      {a.amount > 0 ? "+" : ""}{a.amount.toFixed(1)}
-                    </p>
+                    <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{a.reason || "System adjusted"}</p>
+                    <div className="mt-3 flex justify-between text-[10px] font-bold text-gray-400">
+                      <span>Balance {a.balanceAfter.toFixed(1)}{unit}</span>
+                      <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{a.reason || "System adjusted"}</p>
-                  <div className="mt-3 flex justify-between text-[10px] font-bold text-gray-400">
-                    <span>Balance {a.balanceAfter.toFixed(1)}</span>
-                    <span>{new Date(a.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="p-4 bg-gray-50/30 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-800 text-center">
               {hasMoreAudits ? (
@@ -497,33 +503,36 @@ export default function EmployeeEdit({
                    <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-mono text-[9px] uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">
                      <th className="px-8 py-4">Dates</th>
                      <th className="px-6 py-4">Type</th>
-                     <th className="px-6 py-4">Days</th>
-                     <th className="px-6 py-4">Status</th>
+                     <th className="px-6 py-4 text-center">Duration</th>
+                     <th className="px-6 py-4 text-center">Status</th>
                      <th className="px-8 py-4">Applied On</th>
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                   {leaveRequests.map(r => (
-                     <tr key={r.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
-                       <td className="px-8 py-4 font-mono text-gray-600 dark:text-gray-400">
-                         {r.startDate} {r.startDate !== r.endDate ? `→ ${r.endDate}` : ""}
-                       </td>
-                       <td className="px-6 py-4 font-black uppercase text-indigo-500">{r.leaveTypeCode}</td>
-                       <td className="px-6 py-4 font-bold">{r.appliedDays}</td>
-                       <td className="px-6 py-4 text-center">
-                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
-                            r.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                            r.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                            'bg-gray-50 text-gray-500 border-gray-200'
-                         }`}>
-                           {r.status}
-                         </span>
-                       </td>
-                       <td className="px-8 py-4 text-gray-400 font-mono text-[10px]">
-                         {new Date(r.createdAt).toLocaleDateString()}
-                       </td>
-                     </tr>
-                   ))}
+                   {leaveRequests.map(r => {
+                      const unit = r.leaveTypeCode === "CMP" ? "h" : "d";
+                      return (
+                        <tr key={r.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors">
+                          <td className="px-8 py-4 font-mono text-gray-600 dark:text-gray-400">
+                            {r.startDate} {r.startDate !== r.endDate ? `→ ${r.endDate}` : ""}
+                          </td>
+                          <td className="px-6 py-4 font-black uppercase text-indigo-500">{r.leaveTypeCode}</td>
+                          <td className="px-6 py-4 font-bold text-center">{r.appliedDays}{unit}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${
+                                r.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                r.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                'bg-gray-50 text-gray-500 border-gray-200'
+                            }`}>
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-8 py-4 text-gray-400 font-mono text-[10px]">
+                            {new Date(r.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      );
+                   })}
                    {leaveRequests.length === 0 && !loadingLeaves && (
                      <tr>
                        <td colSpan={5} className="py-12 text-center text-gray-400 italic">No leaves applied yet</td>
@@ -560,142 +569,5 @@ export default function EmployeeEdit({
         />
       )}
     </div>
-  );
-}
-
-function BalanceAdjustmentModal({ 
-  employeeId, 
-  balances,
-  onClose, 
-  onSuccess 
-}: { 
-  employeeId: number; 
-  balances: LeaveBalanceResponse[];
-  onClose: () => void; 
-  onSuccess: () => void;
-}) {
-  const [mode, setMode] = useState<"GRANT" | "OVERRIDE">("GRANT");
-  const [leaveTypeId, setLeaveTypeId] = useState(balances[0]?.leaveTypeId || 0);
-  const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
-  const [showAccrualConfirm, setShowAccrualConfirm] = useState(false);
-  
-  const grantMutation = useGrantLeave();
-  const overrideMutation = useOverrideBalance();
-  const accrualMutation = useRunAccrual();
-
-  const handleApply = async () => {
-    if (!leaveTypeId || !amount || !reason) return;
-    try {
-      if (mode === "GRANT") {
-        await grantMutation.mutateAsync({ employeeId, leaveTypeId, amount: Number(amount), reason });
-      } else {
-        await overrideMutation.mutateAsync({ employeeId, leaveTypeId, amount: Number(amount), reason });
-      }
-      onSuccess();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleAccrual = async () => {
-    try {
-      await accrualMutation.mutateAsync();
-      onSuccess();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  return (
-    <>
-    <AppModal isOpen={true} onClose={onClose} title="Balance Management" size="md">
-      <div className="space-y-6 py-4">
-        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-          <button 
-            onClick={() => setMode("GRANT")}
-            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === "GRANT" ? "bg-white dark:bg-gray-900 text-indigo-600 shadow-sm" : "text-gray-400"}`}
-          >
-            Credit/Debit
-          </button>
-          <button 
-            onClick={() => setMode("OVERRIDE")}
-            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === "OVERRIDE" ? "bg-white dark:bg-gray-900 text-indigo-600 shadow-sm" : "text-gray-400"}`}
-          >
-            Hard Override
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <SelectField
-              label="Leave Category"
-              value={String(leaveTypeId)}
-              onChange={(v) => setLeaveTypeId(Number(v))}
-              options={balances.map(b => ({ label: b.leaveTypeCode, value: String(b.leaveTypeId) }))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
-              {mode === "GRANT" ? "Adjustment Amount (Days)" : "New Balance Value (Days)"}
-            </label>
-            <input 
-              type="number" 
-              step="0.1"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={mode === "GRANT" ? "e.g. 1.5 or -1.0" : "e.g. 15.0"}
-              className="w-full h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl px-4 text-sm font-mono font-black"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Justification / Audit Note</label>
-            <textarea 
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4 text-sm font-medium"
-              placeholder="Why is this change being made?"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 pt-4">
-          <button 
-            onClick={handleApply}
-            disabled={grantMutation.isPending || overrideMutation.isPending}
-            className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all"
-          >
-            {grantMutation.isPending || overrideMutation.isPending ? "Updating Ledger..." : "Commit Transaction"}
-          </button>
-          
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100 dark:border-gray-800"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black text-gray-300 dark:text-gray-700"><span className="bg-white dark:bg-gray-900 px-2 tracking-[0.3em]">Danger Zone</span></div>
-          </div>
-
-          <button 
-            onClick={() => setShowAccrualConfirm(true)}
-            disabled={accrualMutation.isPending}
-            className="w-full py-3 border border-amber-200 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all"
-          >
-            {accrualMutation.isPending ? "Running Engine..." : "Trigger Global Accrual Run"}
-          </button>
-        </div>
-      </div>
-    </AppModal>
-    <ConfirmModal
-      isOpen={showAccrualConfirm}
-      onClose={() => setShowAccrualConfirm(false)}
-      onConfirm={handleAccrual}
-      title="Trigger Global Accrual"
-      message="This runs the leave accrual engine for all employees and writes ledger entries. Continue only if you have verified the payroll/leave period."
-      confirmText="Run Accrual"
-      requireConfirmText="ACCRUAL"
-      isDestructive={true}
-    />
-    </>
   );
 }
