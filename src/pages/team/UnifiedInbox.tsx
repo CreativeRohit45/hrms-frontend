@@ -29,18 +29,21 @@ import {
   useRejectOvertimeMutation,
   useUnifiedInbox,
 } from "../../hooks/queries/useAttendance";
-import { useApproveLeave, useRejectLeave, useRevokeLeave } from "../../hooks/queries/useLeaves";
+import { useApproveLeave, useBulkLeaveImpactPreview, useLeaveImpactPreview, useRejectLeave, useRevokeLeave } from "../../hooks/queries/useLeaves";
 import { useApproveGatepass, useRejectGatepass } from "../../hooks/queries/useGatepasses";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { AppModal } from "../../components/ui/AppModal";
 import { SelectField } from "../../components/ui/SelectField";
 import { FilterSheet, MobileFilterButton } from "../../components/ui/FilterSheet";
+import { LeaveLedgerDrawer } from "../../components/leaves/LeaveLedgerDrawer";
 import { useDepartments } from "../../hooks/queries/useSettings";
 import { useAuth } from "../../context/AuthContext";
+import type { LeaveImpactPreview } from "../../types/leave";
 
 interface UnifiedRequest {
   id: string;
   type: "LEAVE" | "GATEPASS" | "CORRECTION" | "OVERTIME";
+  employeeId?: number;
   employeeName: string;
   employeeCode: string;
   details: string;
@@ -67,6 +70,7 @@ interface UnifiedRequest {
   overtimeMinutes?: number;
   attendanceStatus?: string;
   rejectionReason?: string;
+  impactPreview?: LeaveImpactPreview;
 }
 
 function getInitials(name: string) {
@@ -98,6 +102,20 @@ function formatLabel(value?: string) {
 function formatDays(value?: number) {
   if (value == null) return "Not available";
   return `${value} day${value === 1 ? "" : "s"}`;
+}
+
+function getRequestNumericId(id: string) {
+  return parseInt(id.split("-")[1], 10);
+}
+
+function formatImpactNumber(value?: number) {
+  if (value == null) return "0";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function formatCompactDate(value?: string) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
 const TYPE_CONFIG = {
@@ -177,6 +195,32 @@ const statusConfig: Record<
   },
 };
 
+const impactConfig: Record<
+  "SAFE" | "RISK" | "UNDERSTAFFED" | "UNCONFIGURED",
+  { badge: string; panel: string; title: string }
+> = {
+  SAFE: {
+    badge: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/60",
+    panel: "border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/20",
+    title: "Coverage Safe",
+  },
+  RISK: {
+    badge: "bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900/60",
+    panel: "border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/20",
+    title: "Coverage At Risk",
+  },
+  UNDERSTAFFED: {
+    badge: "bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-900/60",
+    panel: "border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/20",
+    title: "Would Understaff Shift",
+  },
+  UNCONFIGURED: {
+    badge: "bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700",
+    panel: "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50",
+    title: "Threshold Not Configured",
+  },
+};
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -188,10 +232,11 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function RequestDetailBody({ request }: { request: UnifiedRequest }) {
+function RequestDetailBody({ request, impactPreview }: { request: UnifiedRequest; impactPreview?: LeaveImpactPreview | null }) {
   const cfg = statusConfig[request.status] ?? statusConfig["PENDING"];
   const typeCfg = TYPE_CONFIG[request.type];
   const Icon = typeCfg.icon;
+  const impactStyle = impactPreview ? impactConfig[impactPreview.severity] : null;
 
   return (
     <div className="pb-4">
@@ -233,6 +278,40 @@ function RequestDetailBody({ request }: { request: UnifiedRequest }) {
 
         {/* ── Meta grid ───────────────────────────────────────── */}
         <div className="p-6 sm:p-8">
+          {request.type === "LEAVE" && impactPreview && (
+            <div className={`mb-6 rounded-3xl border p-4 sm:p-5 ${impactStyle?.panel}`}>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${impactStyle?.badge}`}>
+                    {impactStyle?.title}
+                  </span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    Worst case: {formatCompactDate(impactPreview.worstCaseDate)}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{impactPreview.message}</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl bg-white/80 p-3 dark:bg-gray-900/60">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Scheduled</p>
+                    <p className="mt-1 text-lg font-black text-gray-900 dark:text-white">{impactPreview.scheduledCount}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/80 p-3 dark:bg-gray-900/60">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Already Off</p>
+                    <p className="mt-1 text-lg font-black text-gray-900 dark:text-white">{formatImpactNumber(impactPreview.alreadyApprovedOffCount)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/80 p-3 dark:bg-gray-900/60">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">After Approval</p>
+                    <p className="mt-1 text-lg font-black text-gray-900 dark:text-white">{formatImpactNumber(impactPreview.projectedAvailableCount)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/80 p-3 dark:bg-gray-900/60">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Minimum Needed</p>
+                    <p className="mt-1 text-lg font-black text-gray-900 dark:text-white">{impactPreview.minimumHeadcount ?? "Not set"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {request.type === "LEAVE" && (
             <div className="grid grid-cols-2 gap-x-6 gap-y-6">
               <DetailRow label="Leave Type" value={request.leaveTypeName ?? "—"} />
@@ -445,6 +524,7 @@ function RequestCard({
   const cfg = TYPE_CONFIG[req.type];
   const Icon = cfg.icon;
   const initials = getInitials(req.employeeName);
+  const impactStyle = req.impactPreview ? impactConfig[req.impactPreview.severity] : null;
 
   return (
     <div
@@ -471,6 +551,11 @@ function RequestCard({
               <Icon className="h-3 w-3" />
               {cfg.label}
             </span>
+            {req.type === "LEAVE" && req.status === "PENDING" && req.impactPreview && (
+              <span className={`inline-flex max-w-full items-center rounded-xl px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${impactStyle?.badge}`}>
+                {req.impactPreview.severity} on {formatCompactDate(req.impactPreview.worstCaseDate)}
+              </span>
+            )}
           </div>
           <p className="line-clamp-2 text-sm font-medium leading-snug text-gray-700 dark:text-gray-300">{req.details}</p>
           <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
@@ -584,6 +669,7 @@ export default function UnifiedInbox() {
   const [page, setPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<UnifiedRequest | null>(null);
+  const [ledgerTarget, setLedgerTarget] = useState<{ employeeId: number; employeeName: string } | null>(null);
   const queryClient = useQueryClient();
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [revokeModal, setRevokeModal] = useState<{ isOpen: boolean; request: UnifiedRequest | null }>({
@@ -592,6 +678,7 @@ export default function UnifiedInbox() {
   });
   const { pushToast } = useAppToast();
   const canFilterDepartment = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
+  const canOpenLedger = user?.role === "HR_ADMIN" || user?.role === "SUPER_ADMIN";
   const { data: departments = [] } = useDepartments(canFilterDepartment);
 
   useEffect(() => {
@@ -610,6 +697,7 @@ export default function UnifiedInbox() {
     return data.content.map((item: any) => ({
       id: item.id,
       type: item.requestType as UnifiedRequest["type"],
+      employeeId: item.employeeId,
       employeeName: item.employeeName,
       employeeCode: item.employeeCode,
       details: item.details,
@@ -639,16 +727,48 @@ export default function UnifiedInbox() {
     }));
   }, [data]);
 
+  const pendingLeaveIds = useMemo(
+    () =>
+      allRequests
+        .filter((req) => req.type === "LEAVE" && req.status === "PENDING")
+        .map((req) => getRequestNumericId(req.id)),
+    [allRequests]
+  );
+
+  const { data: bulkImpactPreviews = [] } = useBulkLeaveImpactPreview(
+    pendingLeaveIds,
+    activeTab === "PENDING" && pendingLeaveIds.length > 0
+  );
+
+  const impactPreviewByLeaveId = useMemo(
+    () => new Map(bulkImpactPreviews.map((preview) => [preview.leaveRequestId, preview])),
+    [bulkImpactPreviews]
+  );
+
   const visibleRequests = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return allRequests;
-    return allRequests.filter(
+    const filtered = !term ? allRequests : allRequests.filter(
       (req) =>
         req.employeeName.toLowerCase().includes(term) ||
         req.employeeCode.toLowerCase().includes(term) ||
         req.details?.toLowerCase().includes(term)
     );
-  }, [allRequests, searchTerm]);
+    return filtered.map((req) => {
+      if (req.type !== "LEAVE") {
+        return req;
+      }
+      return {
+        ...req,
+        impactPreview: impactPreviewByLeaveId.get(getRequestNumericId(req.id)),
+      };
+    });
+  }, [allRequests, impactPreviewByLeaveId, searchTerm]);
+
+  const selectedLeaveId =
+    selectedRequest?.type === "LEAVE" && selectedRequest.status === "PENDING"
+      ? getRequestNumericId(selectedRequest.id)
+      : undefined;
+  const { data: selectedImpactPreview } = useLeaveImpactPreview(selectedLeaveId, !!selectedLeaveId);
 
   const approveLeave = useApproveLeave();
   const rejectLeave = useRejectLeave();
@@ -666,7 +786,7 @@ export default function UnifiedInbox() {
       return;
     }
 
-    const rawId = parseInt(request.id.split("-")[1], 10);
+    const rawId = getRequestNumericId(request.id);
     setActioningId(request.id);
     
     // --- Optimistic UI Update ---
@@ -716,7 +836,7 @@ export default function UnifiedInbox() {
     const request = revokeModal.request;
     if (!request) return;
 
-    const rawId = parseInt(request.id.split("-")[1], 10);
+    const rawId = getRequestNumericId(request.id);
     setActioningId(request.id);
     try {
       await revokeLeave.mutateAsync({ leaveId: rawId, reason: "Revoked by Manager" });
@@ -782,11 +902,19 @@ export default function UnifiedInbox() {
           title={`${TYPE_CONFIG[selectedRequest.type].label} Details`}
           size="2xl"
         >
-          <RequestDetailBody request={selectedRequest} />
-          <div className="mt-4 px-1 pb-2">
+          <RequestDetailBody request={selectedRequest} impactPreview={selectedImpactPreview ?? selectedRequest.impactPreview} />
+          <div className="mt-4 flex flex-col gap-3 px-1 pb-2 sm:flex-row sm:justify-end">
+            {canOpenLedger && selectedRequest.type === "LEAVE" && typeof selectedRequest.employeeId === "number" && (
+              <button
+                onClick={() => setLedgerTarget({ employeeId: selectedRequest.employeeId!, employeeName: selectedRequest.employeeName })}
+                className="w-full min-h-[56px] rounded-2xl border border-indigo-200 bg-indigo-50 py-3 text-sm font-black text-indigo-600 shadow-sm transition-all hover:bg-indigo-100 active:scale-[0.98] dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300 dark:hover:bg-indigo-950/50 sm:w-auto sm:px-6"
+              >
+                Open Leave Ledger
+              </button>
+            )}
             <button
               onClick={() => setSelectedRequest(null)}
-              className="w-full min-h-[56px] rounded-2xl border border-gray-200 bg-white py-3 text-sm font-black text-gray-600 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 active:scale-[0.98] dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="w-full min-h-[56px] rounded-2xl border border-gray-200 bg-white py-3 text-sm font-black text-gray-600 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 active:scale-[0.98] dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 sm:w-auto sm:px-6"
             >
               Close Details
             </button>
@@ -907,6 +1035,14 @@ export default function UnifiedInbox() {
         requireConfirmText="REVOKE"
         isDestructive={true}
       />
+      {ledgerTarget && (
+        <LeaveLedgerDrawer
+          employeeId={ledgerTarget.employeeId}
+          employeeName={ledgerTarget.employeeName}
+          isOpen={true}
+          onClose={() => setLedgerTarget(null)}
+        />
+      )}
     </div>
   );
 }

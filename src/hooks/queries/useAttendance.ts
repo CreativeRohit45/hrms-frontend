@@ -96,7 +96,7 @@ function invalidateAttendanceEcosystem(employeeCode: string) {
   // Pending corrections queue (manager sidebar badge)
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.pendingCorrections() });
   // Cross-domain: admin employee request views in EmployeeEdit
-  queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'requests'] });
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.all() });
 }
 
 // ── Punch Mutations ──────────────────────────────────────────────

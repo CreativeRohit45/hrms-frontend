@@ -8,6 +8,7 @@ import {
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { SelectField } from "../../components/ui/SelectField";
 import { ActionSheet } from "../../components/ui/ActionSheet";
+import { LeaveLedgerDrawer } from "../../components/leaves/LeaveLedgerDrawer";
 import { useAllEmployees, useDeleteEmployee, useMyProfile } from "../../hooks/queries/useEmployees";
 import { useDepartments } from "../../hooks/queries/useSettings";
 
@@ -63,10 +64,12 @@ function DeptPill({ name }: { name: string | undefined }) {
 function ActionMenu({
   onEdit,
   onDelete,
+  onLedger,
   hasEdit,
 }: {
   onEdit: () => void;
   onDelete: () => void;
+  onLedger: () => void;
   hasEdit: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -88,6 +91,12 @@ function ActionMenu({
         onClose={() => setSheetOpen(false)}
         title="Employee Actions"
         items={[
+          {
+            label: "Open Leave Ledger",
+            description: "Balances, requests, and audit entries",
+            icon: <Clock className="h-5 w-5" />,
+            onClick: onLedger,
+          },
           ...(hasEdit ? [{
             label: "Edit Employee",
             description: "Update profile, payroll, role, and leave details",
@@ -116,17 +125,23 @@ function ActionMenu({
 
       {open && (
         <div className="absolute right-0 top-10 z-30 w-44 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/40">
-          {hasEdit && (
-            <button
-              onClick={() => { onEdit(); setOpen(false); }}
-              className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
-            >
-              <PencilLine className="h-4 w-4" />
-              Edit Profile
-            </button>
-          )}
+          <button
+            onClick={() => { onLedger(); setOpen(false); }}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
+          >
+            <Clock className="h-4 w-4" />
+            Leave Ledger
+          </button>
           {hasEdit && (
             <>
+              <div className="mx-3 border-t border-gray-100 dark:border-gray-800" />
+              <button
+                onClick={() => { onEdit(); setOpen(false); }}
+                className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-gray-300 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
+              >
+                <PencilLine className="h-4 w-4" />
+                Edit Profile
+              </button>
               <div className="mx-3 border-t border-gray-100 dark:border-gray-800" />
               <button
                 onClick={() => { onDelete(); setOpen(false); }}
@@ -171,12 +186,14 @@ function EmployeeCard({
   index,
   onEdit,
   onDelete,
+  onOpenLedger,
   hasEdit,
 }: {
   emp: EmployeeResponse;
   index: number;
   onEdit: () => void;
   onDelete: () => void;
+  onOpenLedger: () => void;
   hasEdit: boolean;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -197,6 +214,12 @@ function EmployeeCard({
         onClose={() => setSheetOpen(false)}
         title="Employee Actions"
         items={[
+          {
+            label: "Open Leave Ledger",
+            description: "View balances, audit history, and requests",
+            icon: <Clock className="h-5 w-5" />,
+            onClick: onOpenLedger,
+          },
           ...(hasEdit ? [{
             label: "Edit Employee",
             description: "Update profile, payroll, role, and leave details",
@@ -227,7 +250,7 @@ function EmployeeCard({
               {initials}
             </div>
             <div className="hidden md:block">
-              <ActionMenu onEdit={onEdit} onDelete={onDelete} hasEdit={hasEdit} />
+              <ActionMenu onEdit={onEdit} onDelete={onDelete} onLedger={onOpenLedger} hasEdit={hasEdit} />
             </div>
           </div>
 
@@ -249,19 +272,21 @@ function EmployeeCard({
         </div>
 
         {/* Card footer: shift info */}
-        <div className="flex items-center gap-2 border-t border-gray-100 bg-gray-50/60 px-6 py-3.5 dark:border-gray-800 dark:bg-gray-800/30">
-          <Clock className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-          <span className="min-w-0 truncate font-mono text-[11px] font-bold text-gray-500 dark:text-gray-400">
-            {shiftStr}
-          </span>
-          {emp.shiftName && (
-            <>
-              <span className="text-gray-200 dark:text-gray-700">·</span>
-              <span className="min-w-0 truncate text-[11px] font-medium text-gray-400 dark:text-gray-500">
-                {emp.shiftName}
-              </span>
-            </>
-          )}
+        <div className="border-t border-gray-100 bg-gray-50/60 px-6 py-3.5 dark:border-gray-800 dark:bg-gray-800/30">
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+            <span className="min-w-0 truncate font-mono text-[11px] font-bold text-gray-500 dark:text-gray-400">
+              {shiftStr}
+            </span>
+            {emp.shiftName && (
+              <>
+                <span className="text-gray-200 dark:text-gray-700">·</span>
+                <span className="min-w-0 truncate text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                  {emp.shiftName}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </>
@@ -320,6 +345,7 @@ export default function EmployeeList({
   const deleteMutation = useDeleteEmployee();
 
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [ledgerEmployee, setLedgerEmployee] = useState<EmployeeResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // When searching, we keep current page (server filters if backend supported it, 
@@ -469,6 +495,7 @@ export default function EmployeeList({
                 index={index}
                 onEdit={() => onEditEmployee?.(emp.id)}
                 onDelete={() => emp.id && setConfirmDelete(emp.id)}
+                onOpenLedger={() => setLedgerEmployee(emp)}
                 hasEdit={canManage}
               />
             ))
@@ -540,6 +567,14 @@ export default function EmployeeList({
         requireConfirmText="DELETE"
         isDestructive={true}
       />
+      {ledgerEmployee && (
+        <LeaveLedgerDrawer
+          employeeId={ledgerEmployee.id}
+          employeeName={ledgerEmployee.fullName}
+          isOpen={true}
+          onClose={() => setLedgerEmployee(null)}
+        />
+      )}
     </div>
   );
 }

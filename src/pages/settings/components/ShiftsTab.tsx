@@ -65,6 +65,7 @@ export default function ShiftsTab() {
                 <th className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider py-3 px-4">Hours</th>
                 <th className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider py-3 px-4">Break</th>
                 <th className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider py-3 px-4">Grace</th>
+                <th className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider py-3 px-4">Min Headcount</th>
                 <th className="text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider py-3 px-4">Status</th>
                 <th className="text-right text-[11px] font-bold text-gray-400 uppercase tracking-wider py-3 px-4">Actions</th>
               </tr>
@@ -78,6 +79,15 @@ export default function ShiftsTab() {
                   <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{s.standardHours}h</td>
                   <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{s.unpaidBreakMinutes}m</td>
                   <td className="py-3 px-4 text-gray-600 dark:text-gray-400">{s.gracePeriodMinutes}m</td>
+                  <td className="py-3 px-4">
+                    {s.minimumHeadcount == null ? (
+                      <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                        Not set
+                      </span>
+                    ) : (
+                      <span className="text-gray-600 dark:text-gray-400">{s.minimumHeadcount}</span>
+                    )}
+                  </td>
                   <td className="py-3 px-4">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       s.active
@@ -146,7 +156,7 @@ export default function ShiftsTab() {
                   </button>
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-xl bg-white p-2.5 text-center dark:bg-gray-900">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Hours</p>
                   <p className="mt-0.5 text-sm font-bold text-gray-900 dark:text-white">{s.standardHours}h</p>
@@ -158,6 +168,12 @@ export default function ShiftsTab() {
                 <div className="rounded-xl bg-white p-2.5 text-center dark:bg-gray-900">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Grace</p>
                   <p className="mt-0.5 text-sm font-bold text-gray-900 dark:text-white">{s.gracePeriodMinutes}m</p>
+                </div>
+                <div className={`rounded-xl p-2.5 text-center ${s.minimumHeadcount == null ? "bg-amber-50 dark:bg-amber-950/20" : "bg-white dark:bg-gray-900"}`}>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Min Headcount</p>
+                  <p className={`mt-0.5 text-sm font-bold ${s.minimumHeadcount == null ? "text-amber-700 dark:text-amber-300" : "text-gray-900 dark:text-white"}`}>
+                    {s.minimumHeadcount ?? "Not set"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -200,6 +216,7 @@ function ShiftFormModal({ initial, onSave, onClose, isSaving }: {
     overnight: false,
     standardHours: 8,
     gracePeriodMinutes: 15,
+    minimumHeadcount: null,
     active: true,
   });
 
@@ -251,7 +268,7 @@ function ShiftFormModal({ initial, onSave, onClose, isSaving }: {
           <TimePickerField label="End Time (IST)" parts={endParts} setter={setEndParts} />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div>
             <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Std Hours</label>
             <input
@@ -281,6 +298,23 @@ function ShiftFormModal({ initial, onSave, onClose, isSaving }: {
               className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
                 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
             />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Minimum Headcount</label>
+            <input
+              type="number" min="0"
+              value={form.minimumHeadcount ?? ""}
+              onChange={(e) => setForm({
+                ...form,
+                minimumHeadcount: e.target.value === "" ? null : parseInt(e.target.value, 10)
+              })}
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+                rounded-lg px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              placeholder="Not set"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Minimum people required on this shift before leave approvals trigger warnings.
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-6 pt-2">

@@ -11,6 +11,7 @@ export interface Shift {
   overnight: boolean;
   standardHours: number;
   gracePeriodMinutes: number;
+  minimumHeadcount: number | null;
   active: boolean;
 }
 

@@ -4,6 +4,8 @@ import { getServerNow } from "../utils/serverTime";
 import {
   AlertCircle,
   Clock,
+  FileText,
+  ChevronRight,
   UserCheck,
   Users,
   Timer,
@@ -18,7 +20,9 @@ import { useAppToast } from "../components/ui/ToastProvider";
 import { SkeletonCard, SkeletonTable } from "../components/ui/Skeletons";
 import { useDashboardStats, useDepartmentAbsentees } from "../hooks/queries/useDashboard";
 import { usePunchIn, usePunchOut } from "../hooks/queries/useAttendance";
+import { useMyPayslips } from "../hooks/queries/usePayroll";
 import { LeaveBalanceWidget } from "../components/dashboard/LeaveBalanceWidget";
+import { LeaveApplyModal } from "../components/requests/LeaveApplyModal";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -27,12 +31,14 @@ export default function Dashboard() {
 
   const { data: stats, isLoading: loading } = useDashboardStats();
   const { data: absentees = [] } = useDepartmentAbsentees();
+  const { data: payslips = [] } = useMyPayslips();
 
   const punchInMutation = usePunchIn();
   const punchOutMutation = usePunchOut();
   const punchLoading = punchInMutation.isPending || punchOutMutation.isPending;
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
   // Live clock — the only remaining interval, not a data-fetch concern
   React.useEffect(() => {
@@ -76,6 +82,9 @@ export default function Dashboard() {
     const m = stats.totalWorkedMinutes % 60;
     return `${h}h ${m}m`;
   }, [stats]);
+  const isActive = stats?.currentSession?.active ?? false;
+
+
 
   if (loading) {
     return (
@@ -107,7 +116,6 @@ export default function Dashboard() {
 
   if (!stats) return <EmptyState title="Sync Broken" description="Could not load dashboard stats." />;
 
-  const isActive = stats.currentSession?.active;
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   if (isSuperAdmin) {
@@ -248,7 +256,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
+      
       {/* ROW 2: MONTHLY STATS */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Days Present" value={stats.presentDays} icon={<UserCheck className="h-4 w-4" />} />
@@ -370,6 +378,12 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      {leaveModalOpen && (
+        <LeaveApplyModal
+          onClose={() => setLeaveModalOpen(false)}
+          onSuccess={() => setLeaveModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

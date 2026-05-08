@@ -28,6 +28,17 @@ export const queryKeys = {
     deptAbsentees: () => ['leaves', 'deptAbsentees'] as const,
     employeeBalances: (employeeId: number) => ['leaves', 'employeeBalances', employeeId] as const,
     auditTrail: (leaveTypeId?: number, year?: number) => ['leaves', 'audit', leaveTypeId, year] as const,
+    impact: {
+      all: () => ['leaves', 'impact'] as const,
+      detail: (leaveId: number) => ['leaves', 'impact', 'detail', leaveId] as const,
+      bulk: (leaveIds: number[]) => ['leaves', 'impact', 'bulk', ...leaveIds] as const,
+    },
+    admin: {
+      all: () => ['leaves', 'admin'] as const,
+      types: () => ['leaves', 'admin', 'types'] as const,
+      audit: (employeeId: number) => ['leaves', 'admin', 'audit', employeeId] as const,
+      requests: (employeeId: number) => ['leaves', 'admin', 'requests', employeeId] as const,
+    },
   },
 
   // ── Payroll ──

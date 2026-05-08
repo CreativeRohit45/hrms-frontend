@@ -53,6 +53,24 @@ export interface LeaveResponse {
   createdAt: string;
 }
 
+export type LeaveImpactSeverity = "SAFE" | "RISK" | "UNDERSTAFFED" | "UNCONFIGURED";
+
+export interface LeaveImpactPreview {
+  leaveRequestId: number;
+  startDate: string;
+  endDate: string;
+  worstCaseDate: string;
+  shiftId: number;
+  shiftName: string;
+  scheduledCount: number;
+  alreadyApprovedOffCount: number;
+  projectedAvailableCount: number;
+  minimumHeadcount: number | null;
+  configured: boolean;
+  severity: LeaveImpactSeverity;
+  message: string;
+}
+
 export interface LeaveApplyRequest {
   leaveTypeId: number;
   startDate: string;
@@ -127,4 +145,3 @@ export interface DepartmentAbsenteeDTO {
   status: "ABSENT" | "ON_LEAVE";
   leaveTypeCode: string | null;
 }
-

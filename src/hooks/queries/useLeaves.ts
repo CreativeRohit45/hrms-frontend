@@ -15,11 +15,12 @@ import {
   adminGetAllLeaveTypes, adminCreateLeaveType, adminUpdateLeaveType, adminDeleteLeaveType,
   previewLeave, runManualAccrual,
   getEmployeeBalances, getEmployeeAuditTrail, getEmployeeRequests,
+  getLeaveImpactPreview, getBulkLeaveImpactPreview,
 } from '../../api/leaves';
 import type {
   LeaveBalanceResponse, LeaveResponse, LeaveTypeDTO,
   LeaveApplyRequest, LeaveActionRequest, LeaveGrantRequest,
-  LeaveOverrideRequest, LeavePreviewResponse,
+  LeaveOverrideRequest, LeavePreviewResponse, LeaveImpactPreview,
 } from '../../types/leave';
 import { useState, useEffect } from 'react';
 
@@ -67,7 +68,7 @@ export function useMyAuditTrail(leaveTypeId?: number, year?: number) {
 
 export function useAdminLeaveTypes() {
   return useQuery<LeaveTypeDTO[]>({
-    queryKey: ['leaves', 'admin', 'types'],
+    queryKey: queryKeys.leaves.admin.types(),
     queryFn: adminGetAllLeaveTypes,
   });
 }
@@ -84,7 +85,7 @@ export function useEmployeeBalances(employeeId: number, enabled = true) {
 
 export function useEmployeeAuditTrail(employeeId: number, enabled = true) {
   return useInfiniteQuery({
-    queryKey: ['leaves', 'admin', 'audit', employeeId],
+    queryKey: queryKeys.leaves.admin.audit(employeeId),
     queryFn: ({ pageParam = 0 }) => getEmployeeAuditTrail(employeeId, pageParam, 10),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => (!lastPage.last ? lastPage.number + 1 : undefined),
@@ -94,7 +95,7 @@ export function useEmployeeAuditTrail(employeeId: number, enabled = true) {
 
 export function useEmployeeLeaveRequests(employeeId: number, enabled = true) {
   return useQuery<LeaveResponse[]>({
-    queryKey: ['leaves', 'admin', 'requests', employeeId],
+    queryKey: queryKeys.leaves.admin.requests(employeeId),
     queryFn: () => getEmployeeRequests(employeeId),
     enabled: enabled && employeeId > 0,
   });
@@ -108,14 +109,22 @@ function invalidateLeaveEcosystem() {
   queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myRequests() });
   queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
   queryClient.invalidateQueries({ queryKey: queryKeys.leaves.pending() });
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.impact.all() });
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
   // Attendance calendars may show "ON_LEAVE" badges
   queryClient.invalidateQueries({ queryKey: queryKeys.attendance.all() });
   queryClient.invalidateQueries({ queryKey: ['attendance', 'inbox'] });
   // Admin-level caches: EmployeeEdit -> Leaves tab, balance overrides, audit trails
-  queryClient.invalidateQueries({ queryKey: ['leaves', 'admin'] });
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.all() });
   // All employee-specific balance caches (hierarchical key match)
   queryClient.invalidateQueries({ queryKey: ['leaves', 'employeeBalances'] });
+}
+
+function invalidateAdminLeaveViews(employeeId: number) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.employeeBalances(employeeId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.audit(employeeId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.requests(employeeId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.all() });
 }
 
 // ── Mutations ────────────────────────────────────────────────────
@@ -170,10 +179,11 @@ export function useRevokeLeave() {
 export function useGrantLeave() {
   return useMutation({
     mutationFn: (data: LeaveGrantRequest) => grantLeave(data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.pending() });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+      invalidateAdminLeaveViews(variables.employeeId);
     },
   });
 }
@@ -181,10 +191,11 @@ export function useGrantLeave() {
 export function useOverrideBalance() {
   return useMutation({
     mutationFn: (data: LeaveOverrideRequest) => overrideBalance(data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.pending() });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard() });
+      invalidateAdminLeaveViews(variables.employeeId);
     },
   });
 }
@@ -193,8 +204,7 @@ export function useAdminOverrideBalance() {
   return useMutation({
     mutationFn: (data: LeaveOverrideRequest) => overrideBalance(data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.employeeBalances(variables.employeeId) });
-      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'audit', variables.employeeId] });
+      invalidateAdminLeaveViews(variables.employeeId);
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
     },
   });
@@ -217,7 +227,7 @@ export function useCreateLeaveType() {
   return useMutation({
     mutationFn: (data: Partial<LeaveTypeDTO>) => adminCreateLeaveType(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.types() });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
     },
   });
@@ -228,7 +238,7 @@ export function useUpdateLeaveType() {
     mutationFn: ({ id, data }: { id: number; data: Partial<LeaveTypeDTO> }) => 
       adminUpdateLeaveType(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.types() });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
     },
   });
@@ -239,7 +249,8 @@ export function useRunAccrual() {
     mutationFn: runManualAccrual,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.myBalances() });
-      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'balances'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.all() });
+      queryClient.invalidateQueries({ queryKey: ['leaves', 'employeeBalances'] });
     },
   });
 }
@@ -248,9 +259,29 @@ export function useDeleteLeaveType() {
   return useMutation({
     mutationFn: (id: number) => adminDeleteLeaveType(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leaves', 'admin', 'types'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.admin.types() });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaves.types() });
     },
+  });
+}
+
+export function useLeaveImpactPreview(leaveId?: number, enabled = true) {
+  return useQuery<LeaveImpactPreview>({
+    queryKey: queryKeys.leaves.impact.detail(leaveId ?? 0),
+    queryFn: () => getLeaveImpactPreview(leaveId!),
+    enabled: enabled && !!leaveId,
+    staleTime: 30_000,
+  });
+}
+
+export function useBulkLeaveImpactPreview(leaveIds: number[], enabled = true) {
+  const normalizedIds = Array.from(new Set(leaveIds.filter((id) => Number.isFinite(id)))).sort((a, b) => a - b);
+
+  return useQuery<LeaveImpactPreview[]>({
+    queryKey: queryKeys.leaves.impact.bulk(normalizedIds),
+    queryFn: () => getBulkLeaveImpactPreview(normalizedIds),
+    enabled: enabled && normalizedIds.length > 0,
+    staleTime: 30_000,
   });
 }
 

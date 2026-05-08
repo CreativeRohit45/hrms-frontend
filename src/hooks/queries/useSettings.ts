@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '../../lib/queryClient';
+import { queryKeys } from '../../lib/queryKeys';
 import {
   getShifts, createShift, updateShift, deleteShift, type Shift,
   getHolidays, createHoliday, updateHoliday, deleteHoliday, type Holiday,
@@ -31,21 +32,30 @@ export function useShifts() {
 export function useCreateShift() {
   return useMutation({
     mutationFn: (shift: Shift) => createShift(shift),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.impact.all() });
+    },
   });
 }
 
 export function useUpdateShift() {
   return useMutation({
     mutationFn: ({ id, shift }: { id: number; shift: Shift }) => updateShift(id, shift),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.impact.all() });
+    },
   });
 }
 
 export function useDeleteShift() {
   return useMutation({
     mutationFn: (id: number) => deleteShift(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.shifts() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaves.impact.all() });
+    },
   });
 }
 

@@ -10,6 +10,7 @@ import type {
   LeaveBalanceAuditResponse,
   LeavePreviewResponse,
   LeaveOverrideRequest,
+  LeaveImpactPreview,
   TeamMemberOnLeave,
   DepartmentAbsenteeDTO,
 } from "../types/leave";
@@ -76,6 +77,16 @@ export async function getPendingLeaves(): Promise<LeaveResponse[]> {
   return res.data;
 }
 
+export async function getLeaveImpactPreview(leaveId: number): Promise<LeaveImpactPreview> {
+  const res = await apiClient.get<LeaveImpactPreview>(`/api/v1/leaves/${leaveId}/impact-preview`);
+  return res.data;
+}
+
+export async function getBulkLeaveImpactPreview(leaveRequestIds: number[]): Promise<LeaveImpactPreview[]> {
+  const res = await apiClient.post<LeaveImpactPreview[]>("/api/v1/leaves/impact-preview/bulk", { leaveRequestIds });
+  return res.data;
+}
+
 export async function approveLeave(leaveId: number): Promise<LeaveResponse> {
   const res = await apiClient.put<LeaveResponse>(`/api/v1/leaves/${leaveId}/approve`);
   return res.data;
@@ -91,7 +102,7 @@ export async function rejectLeave(leaveId: number, data: LeaveActionRequest): Pr
 // ═══════════════════════════════════════════════════════════════════
 
 export async function revokeLeave(leaveId: number, reason: string): Promise<LeaveResponse> {
-  const res = await apiClient.put<LeaveResponse>(`/api/v1/leaves/admin/${leaveId}/revoke`, { reason });
+  const res = await apiClient.put<LeaveResponse>(`/api/v1/leaves/${leaveId}/revoke`, { reason });
   return res.data;
 }
 

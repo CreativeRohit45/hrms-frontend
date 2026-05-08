@@ -106,18 +106,20 @@ export default function AdminLayout() {
             {isDark ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
           </button>
 
-          <NavLink
-            to="/app/profile"
-            className="group flex items-center gap-2 rounded-2xl p-1 pr-2 transition-all hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-sm transition-transform group-hover:scale-95">
-              <User className="h-4 w-4" />
-            </div>
-            <div className="hidden flex-col text-left md:flex">
-              <p className="text-[11px] font-black leading-none text-gray-900 dark:text-white">{user?.fullName?.split(' ')[0]}</p>
-              <p className="mt-0.5 text-[9px] font-bold text-gray-400">{user?.employeeCode}</p>
-            </div>
-          </NavLink>
+          {user?.role !== "SUPER_ADMIN" && (
+            <NavLink
+              to="/app/profile"
+              className="group flex items-center gap-2 rounded-2xl p-1 pr-2 transition-all hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-sm transition-transform group-hover:scale-95">
+                <User className="h-4 w-4" />
+              </div>
+              <div className="hidden flex-col text-left md:flex">
+                <p className="text-[11px] font-black leading-none text-gray-900 dark:text-white">{user?.fullName?.split(' ')[0]}</p>
+                <p className="mt-0.5 text-[9px] font-bold text-gray-400">{user?.employeeCode}</p>
+              </div>
+            </NavLink>
+          )}
 
           <button
             onClick={handleLogout}

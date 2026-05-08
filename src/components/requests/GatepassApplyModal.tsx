@@ -3,7 +3,7 @@ import { AppModal } from "../ui/AppModal";
 import { useAppToast } from "../ui/ToastProvider";
 import { useApplyGatepass } from "../../hooks/queries/useGatepasses";
 import { FormLabel, FormTextarea, SubmitButton, PillToggle } from "../forms/FormPrimitives";
-import { DatePickerField } from "../ui/DatePickerField";
+import { TimePickerField, parseTimeToParts, to24hString } from "../ui/TimePickerField";
 
 export function GatepassApplyModal({
   onClose,
@@ -13,9 +13,8 @@ export function GatepassApplyModal({
   onSuccess: () => void;
 }) {
   const [form, setForm] = useState({
-    date: "",
-    outTime: "",
-    inTime: "",
+    outTime: parseTimeToParts("13:00"),
+    inTime: parseTimeToParts("14:00"),
     gatepassType: "OFFICIAL" as "OFFICIAL" | "PERSONAL",
     reason: "",
   });
@@ -24,15 +23,15 @@ export function GatepassApplyModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.date || !form.outTime || !form.inTime) {
-      pushToast({ title: "Validation Error", message: "Date and times are required.", tone: "error" });
-      return;
-    }
+    
+    // Use today's date since backend requires an active session
+    const today = new Date().toISOString().split('T')[0];
+    
     const payload = {
       gatepassType: form.gatepassType,
       reason: form.reason,
-      requestedOutTime: `${form.date}T${form.outTime}`,
-      requestedInTime: `${form.date}T${form.inTime}`,
+      requestedOutTime: `${today}T${to24hString(form.outTime)}`,
+      requestedInTime: `${today}T${to24hString(form.inTime)}`,
     };
 
     try {
@@ -46,7 +45,7 @@ export function GatepassApplyModal({
 
   return (
     <AppModal isOpen={true} onClose={onClose} title="Request Gatepass" size="lg">
-      <form onSubmit={handleSubmit} className="space-y-5 pb-4 pt-2">
+      <form onSubmit={handleSubmit} className="space-y-6 pb-4 pt-2">
 
         {/* Pass type */}
         <div>
@@ -62,42 +61,18 @@ export function GatepassApplyModal({
           />
         </div>
 
-        {/* Date Picker */}
-        <div>
-          <DatePickerField
-            label="Date"
-            required
-            value={form.date}
-            onChange={(v) => setForm({ ...form, date: v })}
+        {/* Time pickers - Same as Regularization */}
+        <div className="space-y-5">
+          <TimePickerField 
+            label="Exit Time" 
+            parts={form.outTime} 
+            setter={(v) => setForm({ ...form, outTime: v })} 
           />
-        </div>
-
-        {/* Time pickers */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <FormLabel>Exit Time</FormLabel>
-            <div className="relative flex items-center">
-              <input
-                type="time"
-                required
-                value={form.outTime}
-                onChange={(e) => setForm({ ...form, outTime: e.target.value })}
-                className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-orange-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
-              />
-            </div>
-          </div>
-          <div>
-            <FormLabel>Return Time</FormLabel>
-            <div className="relative flex items-center">
-              <input
-                type="time"
-                required
-                value={form.inTime}
-                onChange={(e) => setForm({ ...form, inTime: e.target.value })}
-                className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:focus:border-orange-500 dark:focus:bg-gray-800 dark:[color-scheme:dark]"
-              />
-            </div>
-          </div>
+          <TimePickerField 
+            label="Return Time" 
+            parts={form.inTime} 
+            setter={(v) => setForm({ ...form, inTime: v })} 
+          />
         </div>
 
         {/* Reason */}
